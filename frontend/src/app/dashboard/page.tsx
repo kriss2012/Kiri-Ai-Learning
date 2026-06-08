@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { BookOpen, Award, CheckCircle, Clock, GraduationCap, Download, ExternalLink, ShieldCheck, User as UserIcon } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import { fetchApi, getUser, User } from "@/lib/api";
