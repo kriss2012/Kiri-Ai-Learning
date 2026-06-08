@@ -1,84 +1,149 @@
 # 🌟 Kiri AI Learning Platform
 
-Kiri AI is a state-of-the-art educational platform designed to deliver and cryptographically verify student certifications. It employs an advanced anti-fraud progress-tracking framework and RSA-signed verifiable credentials to ensure academic integrity.
+Kiri AI is a professional, secure educational platform engineered to deliver premium courses and verify student certifications. The system guarantees academic integrity using **wall-clock pacing anti-fraud filters** and **cryptographically verifiable signatures**.
 
 ---
 
-## 🛠️ Tech Stack & Architecture
+## 🗺️ System Architecture & Data Flow
 
-*   **Frontend**: Next.js 16 (App Router), Tailwind CSS, Lucide icons, TypeScript.
-*   **Backend**: Node.js, Express, TypeScript, Prisma ORM, SQLite database.
-*   **Cryptography**: RSA-2048 digital signature generator (SHA-256 integrity checks).
-*   **PDF Generation**: Vector-rendered documents via PDFKit embedded with verification QR codes.
+Below is the verification flow showing how a user signs in, progresses through a course, undergoes security evaluation, and obtains an RSA-signed PDF credential:
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Learner as Student (Priya Sharma)
+    participant Client as Next.js Web App (Port 3000)
+    participant API as Express Gateway (Port 5000)
+    participant DB as SQLite / Prisma ORM
+    participant Crypto as RSA Cryptographic Engine
+
+    Learner->>Client: Mock Authenticate / SSO
+    Client->>API: Synchronize Session (Register User)
+    API->>DB: Upsert User Record
+    Learner->>Client: Enroll & Launch Course Lecture
+    Client->>API: Heartbeat (every 15s with playhead position)
+    API->>API: Compare Wall-Clock vs Playhead (Anti-Skip)
+    API->>DB: Save LessonProgress
+    Learner->>Client: Take Assessments (Module & Final Checkpoints)
+    Client->>API: Submit Answers (evaluates time limits & scores)
+    API->>API: Validate All Checkpoints Passed & Elapsed Time >= 5%
+    API->>Crypto: Sign completion details (RSA-2048 Private Key)
+    Crypto-->>API: SHA-256 Digital Checksum Signature
+    API->>DB: Log Certificate & CourseCompletion
+    API-->>Client: Generate signed PDF with QR Code
+    Learner->>Client: Scan QR Code / Open Public Portal
+    Client->>API: GET /v1/verify/cert/:cert_id
+    API->>Crypto: Verify Signature using Public Key
+    API-->>Client: Return Status (AUTHENTIC / TAMPERED / REVOKED)
+```
 
 ---
 
-## 🚀 Quick Start Guide
+## 🛠️ Technology Stack & Environment
 
-### 1. Prerequisites
-Ensure you have Node.js (v18+) and npm installed.
+### Frontend Architecture
+*   **Core**: Next.js 16 (App Router) & React 19.
+*   **Styling**: Tailwind CSS & global CSS transitions (Navy background `#0B0F19`, Amber Gold `#F59E0B`).
+*   **Libraries**: `lucide-react` for graphics, `canvas-confetti` for completion celebrations.
 
-### 2. Setting Up the Database & Backend
+### Backend Services
+*   **Framework**: Express.js & TypeScript wrapper (`ts-node-dev`).
+*   **Database**: Prisma Client with SQLite engine.
+*   **Libraries**: `jsonwebtoken` (session handling), `pdfkit` (vector-based PDF layout), `qrcode` (verification links generator).
+
+### Environment Configuration
+Create a `.env` file inside the `backend/` directory:
+```env
+PORT=5000
+DATABASE_URL="file:./dev.db"
+JWT_SECRET="kiri-ai-learning-local-dev-jwt-secret-key-32-chars-long"
+FIREBASE_PROJECT_ID="kiri-app-development"
+```
+
+---
+
+## 🚀 Step-by-Step Developer Setup
+
+### 1. Initialize & Start API Server
 ```bash
-# Navigate to backend directory
+# Navigate and configure database
 cd backend
-
-# Install dependencies
 npm install
-
-# Generate Prisma clients and build migrations
 npx prisma generate
 npx prisma db push
 
-# Seed database with courses, modules, lessons, and questions
+# Populate courses, lessons, and exam items
 npx prisma db seed
 
-# Run local development API gateway (runs on http://localhost:5000)
+# Run the API server in developer mode (with auto-reload)
 npm run dev
 ```
+*The server will run on: **`http://localhost:5000`***
 
-### 3. Setting Up the Web Client
+### 2. Launch Client Interface
 ```bash
-# Navigate to frontend directory
+# Navigate and install packages
 cd ../frontend
-
-# Install dependencies
 npm install
 
-# Start Next.js development server (runs on http://localhost:3000)
+# Run the Next.js web client
 npm run dev
 ```
+*The web client will launch on: **`http://localhost:3000`***
 
 ---
 
-## 🛡️ Anti-Fraud Completion Checks
+## 🔑 Mock Developer & Tester Accounts
 
-To block users from skipping lectures or spoofing credentials, Kiri AI implements strict backend security controls:
+For offline staging, you can authenticate using the following credential buttons in the navigation bar:
 
-### 1. Video Watch Pacing Heartbeats
-*   **Mechanism**: The client player sends heartbeat requests (`POST /v1/lessons/:id/heartbeat`) every 15 seconds containing the current playhead position.
-*   **Security Guard**: The backend calculates the difference in wall-clock time between requests and the user's video position delta. If the user skips ahead or hacks the API payload to advance their progress instantenously, the watch timer is capped to the actual elapsed wall-clock seconds.
-*   **Completion Condition**: A lecture is marked complete only if the total verified watch time is $\ge 80\%$ of the lesson duration.
+| Role | Username / Display Name | Mock Token ID |
+| :--- | :--- | :--- |
+| **Student** | Priya Sharma | `firebase-mock-student-uid-123` |
+| **Educator** | Dr. Ramesh Kumar | `firebase-mock-instructor-uid-123` |
 
-### 2. Milestone Passing Enforcement
-*   **Checkpoints Requirement**: A course cannot be finished unless **all** module quizzes and the final exam have been completed with passing scores ($\ge 70\%$).
-*   **Time-limit checks**: Quiz sessions are tracked with start timestamps. Submissions exceeding the quiz duration limit are automatically disqualified and graded 0%.
-
-### 3. Course Enrollment Duration
-*   **Anti-Spam Verification**: The backend requires that the duration between a user's enrollment date and their completion request is at least 5% of the total course hours (e.g., at least 12 minutes for a 4-hour masterclass). Developer/mock user accounts are exempted from this constraint to facilitate debugging.
+*To inspect an already verified public profile without taking a quiz, use Certificate ID: **`KIRI-2026-MOCKDEMO`***
 
 ---
 
-## 🔑 Cryptographic Verifiable Credentials
+## 📡 Core API Gateway Directory
 
-1. **RSA-2048 Cryptography**: Upon course completion, the backend signs a payload containing the student's name, grade, course title, and completion date using an RSA-2048 private key.
-2. **Signature Verification Registry**: The public verification route (`/verify/:cert_id?sig={signature}`) validates the digital signature using the corresponding public key. Any tampering with URL payloads triggers an immediate "Integrity Check Failed" warning banner.
-3. **QR Code Verification**: The generated PDF contains a QR code referencing the registry verification URL, allowing anyone (recruiters, sponsors, colleges) to instantly verify authenticity offline.
+### 🔐 Session Router
+*   `POST /v1/auth/login`: Accepts JWT bearer tokens from Firebase and syncs user profiles.
+*   `POST /v1/auth/mock-login`: Helper for offline testing (roles: `student`, `instructor`).
+
+### 📚 Course Registry
+*   `GET /v1/courses`: Returns all published catalogs with sponsors.
+*   `GET /v1/courses/:slug`: Retrieves curriculum, modules, lessons, and user enrollment statuses.
+*   `POST /v1/courses/:id/enroll`: Enrolls the authenticated user in the course.
+
+### 🎥 Progress heartbeats
+*   `POST /v1/lessons/:id/start`: Registers the beginning of a lesson.
+*   `POST /v1/lessons/:id/heartbeat`: Sends current watch playhead. Caps time additions if user skips forward to prevent skipping.
+*   `POST /v1/lessons/:id/complete`: Marks lesson as done if watched $\ge 80\%$ (videos) or read (articles).
+
+### 📝 Assessment Engine
+*   `GET /v1/quizzes/:id`: Returns quiz metadata and questions (excludes answers for anti-cheating protection).
+*   `POST /v1/quizzes/:id/start`: Creates a quiz attempt session with an expiration timestamp.
+*   `POST /v1/quizzes/:id/submit`: Scores responses. Exceeding the duration limit yields $0\%$.
+
+### 🎓 Certificate Verification
+*   `GET /v1/verify/cert/:cert_id`: Validates certificate details and cross-references cryptographic checksum signature using public keys.
 
 ---
 
-## 📚 Technical References
+## 🛡️ Academic Integrity Safeguards
 
-*   [Prisma Schema](file:///d:/Kiri-Ai-Learning/backend/prisma/schema.prisma) - Relational structure for tracking enrollments, attempts, and certificates.
-*   [Crypto Service](file:///d:/Kiri-Ai-Learning/backend/src/services/crypto.service.ts) - Keypair handling and signature verification routines.
-*   [Pacing Controller](file:///d:/Kiri-Ai-Learning/backend/src/controllers/lesson.controller.ts) - Heartbeat tracking controls.
+1. **Anti-Skipping filter**: Playhead advancements exceeding wall-clock intervals are rejected.
+2. **Sequential Checkpoints**: Completing a course requires passing every module quiz in the syllabus.
+3. **Minimum Course Duration**: Flagged if total elapsed time since enrollment is less than 5% of course length.
+4. **RSA Verification**: Verification uses asymmetric keys, preventing attackers from forged URLs.
+
+---
+
+## 📚 Code References
+
+*   [Database Models](file:///d:/Kiri-Ai-Learning/backend/prisma/schema.prisma)
+*   [Anti-Skip heartbeats controller](file:///d:/Kiri-Ai-Learning/backend/src/controllers/lesson.controller.ts)
+*   [RSA Digital Signer Service](file:///d:/Kiri-Ai-Learning/backend/src/services/crypto.service.ts)
+*   [Certificate Generation Service](file:///d:/Kiri-Ai-Learning/backend/src/services/certificate.service.ts)
