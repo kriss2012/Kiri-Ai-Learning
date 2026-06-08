@@ -4,8 +4,8 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, BookOpen, Clock, CheckCircle, PlayCircle, Lock, GraduationCap, Award } from "lucide-react";
 import Link from "next/link";
-import Navbar from "../../../components/Navbar";
-import { fetchApi, getUser, mockLogin } from "../../../lib/api";
+import Navbar from "@/components/Navbar";
+import { fetchApi, getUser, mockLogin } from "@/lib/api";
 
 interface Lesson {
   id: string;
