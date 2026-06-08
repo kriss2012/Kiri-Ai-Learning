@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, BookOpen, ShieldAlert, Award, Star, Compass } from "lucide-react";
-import Navbar from "../components/Navbar";
-import { fetchApi } from "../lib/api";
+import Navbar from "@/components/Navbar";
+import { fetchApi } from "@/lib/api";
 
 interface Course {
   id: string;
