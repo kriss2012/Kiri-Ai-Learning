@@ -1,19 +1,24 @@
 import { Router } from "express";
 
+import { authRouter } from "./auth.routes";
+import { courseRouter } from "./course.routes";
+import { lessonRouter } from "./lesson.routes";
+import { quizRouter } from "./quiz.routes";
+import { certRouter } from "./cert.routes";
+import { verifyRouter } from "./verify.routes";
+
 const apiRouter = Router();
 
-// Placeholder routes
 apiRouter.get("/health", (req, res) => {
   res.status(200).json({ status: "ok" });
 });
 
-// We will mount sub-routers here as we build them:
-// apiRouter.use("/auth", authRouter);
-// apiRouter.use("/courses", courseRouter);
-// apiRouter.use("/lessons", lessonRouter);
-// apiRouter.use("/quizzes", quizRouter);
-// apiRouter.use("/certificates", certRouter);
-// apiRouter.use("/verify", verifyRouter);
-// apiRouter.use("/admin", adminRouter);
+apiRouter.use("/auth", authRouter);
+apiRouter.use("/courses", courseRouter);
+apiRouter.use("/lessons", lessonRouter);
+apiRouter.use("/quizzes", quizRouter);
+apiRouter.use("/certificates", certRouter);
+apiRouter.use("/verify", verifyRouter);
+
 
 export { apiRouter };
