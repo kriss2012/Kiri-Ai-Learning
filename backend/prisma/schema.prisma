@@ -1,0 +1,286 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// User types: student, founder, educator, admin, super_admin
+// Course categories: generative_ai, employability
+// Course levels: beginner, intermediate, advanced
+// Course statuses: draft, review, published, archived
+// Progress statuses: not_started, in_progress, completed
+// Lesson types: video, reading, pdf_resource, interactive, external_link
+// Certificate statuses: active, revoked
+// Audit events: issued, downloaded, qr_scanned, revoked, re_issued
+// Sponsor tiers: platinum, gold, silver, community
+
+model User {
+  id            String   @id @default(uuid())
+  firebaseUid   String   @unique
+  email         String   @unique
+  displayName   String
+  profilePhoto  String?
+  userType      String   @default("student") // student, founder, educator, admin, super_admin
+  college       String?
+  city          String?
+  emailVerified Boolean  @default(false)
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  coursesTaught      Course[]            @relation("InstructorCourses")
+  enrollments        Enrollment[]
+  lessonProgress     LessonProgress[]
+  quizAttempts       QuizAttempt[]
+  courseCompletions  CourseCompletion[]
+  certificates       Certificate[]       @relation("LearnerCertificates")
+  revokedCertificate Certificate[]       @relation("RevokerCertificates")
+
+  @@map("users")
+}
+
+model Course {
+  id                  String   @id @default(uuid())
+  title               String
+  slug                String   @unique
+  description         String?
+  shortDescription    String?
+  category            String   // generative_ai, employability
+  subCategory         String
+  level               String   // beginner, intermediate, advanced
+  durationHours       Float
+  thumbnailUrl        String
+  previewVideoUrl     String?
+  instructorId        String
+  minPassScore        Int      @default(70)
+  certificateEligible Boolean  @default(true)
+  status              String   @default("draft") // draft, review, published, archived
+  publishedAt         DateTime?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  // Relations
+  instructor        User               @relation("InstructorCourses", fields: [instructorId], references: [id])
+  modules           Module[]
+  lessons           Lesson[]
+  quizzes           Quiz[]
+  enrollments       Enrollment[]
+  lessonProgress    LessonProgress[]
+  quizAttempts      QuizAttempt[]
+  courseCompletions CourseCompletion[]
+  certificates      Certificate[]
+  sponsors          Sponsor[]          @relation("CourseSponsors")
+
+  @@map("courses")
+}
+
+model Module {
+  id        String   @id @default(uuid())
+  courseId  String
+  title     String
+  order     Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  course  Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lessons Lesson[]
+  quizzes Quiz[]
+
+  @@map("modules")
+}
+
+model Lesson {
+  id              String   @id @default(uuid())
+  courseId        String
+  moduleId        String
+  title           String
+  slug            String
+  contentType     String   // video, reading, pdf_resource, interactive, external_link
+  contentUrl      String?  // Video stream URL, PDF URL, or external URL
+  textContent     String?  // Markdown/HTML for reading lessons
+  durationSeconds Int      @default(0)
+  order           Int
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  course         Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  module         Module           @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  lessonProgress LessonProgress[]
+
+  @@map("lessons")
+}
+
+model Enrollment {
+  id           String    @id @default(uuid())
+  userId       String
+  courseId     String
+  enrolledAt   DateTime  @default(now())
+  unenrolledAt DateTime?
+  isActive     Boolean   @default(true)
+
+  // Relations
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, courseId])
+  @@map("enrollments")
+}
+
+model LessonProgress {
+  id                  String    @id @default(uuid())
+  userId              String
+  lessonId            String
+  courseId            String
+  status              String    @default("not_started") // not_started, in_progress, completed
+  watchSeconds        Int       @default(0)
+  lastPositionSeconds Int       @default(0)
+  completedAt         DateTime?
+  updatedAt           DateTime  @updatedAt
+
+  // Relations
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, lessonId])
+  @@map("lesson_progress")
+}
+
+model Quiz {
+  id               String   @id @default(uuid())
+  courseId         String
+  moduleId         String?
+  title            String
+  isFinal          Boolean  @default(false)
+  timeLimitMinutes Int      @default(30)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  // Relations
+  course       Course        @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  module       Module?       @relation(fields: [moduleId], references: [id], onDelete: SetNull)
+  questions    Question[]
+  quizAttempts QuizAttempt[]
+
+  @@map("quizzes")
+}
+
+model Question {
+  id                String   @id @default(uuid())
+  quizId            String
+  text              String
+  type              String   // "single_choice", "multiple_choice", "true_false", "scenario"
+  optionsJson       String   // JSON array of options
+  correctAnswerJson String   // JSON of correct answers
+  explanation       String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Relations
+  quiz Quiz @relation(fields: [quizId], references: [id], onDelete: Cascade)
+
+  @@map("questions")
+}
+
+model QuizAttempt {
+  id           String    @id @default(uuid())
+  userId       String
+  quizId       String
+  courseId     String
+  sessionToken String
+  startedAt    DateTime  @default(now())
+  submittedAt  DateTime?
+  scorePercent Float?
+  passed       Boolean?
+  answersJson  String?   // JSON object: { questionId: selectedOptionIdOrIds }
+
+  // Relations
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  quiz   Quiz   @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@map("quiz_attempts")
+}
+
+model CourseCompletion {
+  id                String       @id @default(uuid())
+  userId            String
+  courseId          String
+  completedAt       DateTime     @default(now())
+  finalScorePercent Float
+  certificate       Certificate?
+
+  // Relations
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, courseId])
+  @@map("course_completions")
+}
+
+model Certificate {
+  id                     String    @id @default(uuid())
+  certificateId          String    @unique // KIRI-YYYY-XXXXXXXX
+  userId                 String
+  courseId               String
+  completionId           String    @unique
+  issuedAt               DateTime  @default(now())
+  learnerNameSnapshot    String
+  courseTitleSnapshot    String
+  scoreSnapshot          Float
+  instructorNameSnapshot String?
+  sponsorIdsSnapshot     String    // JSON serialized array of sponsor IDs
+  pdfUrl                 String
+  signatureHash          String    // RSA signature hex
+  status                 String    @default("active") // active, revoked
+  revokedAt              DateTime?
+  revokedReason          String?
+  revokedBy              String?
+  createdAt              DateTime  @default(now())
+
+  // Relations
+  user       User                 @relation("LearnerCertificates", fields: [userId], references: [id], onDelete: Cascade)
+  course     Course               @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  completion CourseCompletion     @relation(fields: [completionId], references: [id], onDelete: Cascade)
+  revokedByUser User?             @relation("RevokerCertificates", fields: [revokedBy], references: [id], onDelete: SetNull)
+  auditLogs  CertificateAuditLog[]
+
+  @@map("certificates")
+}
+
+model CertificateAuditLog {
+  id            String   @id @default(uuid())
+  certificateId String
+  event         String   // issued, downloaded, qr_scanned, revoked, re_issued
+  ipHash        String?
+  userAgentHash String?
+  createdAt     DateTime @default(now())
+
+  // Relations
+  certificate Certificate @relation(fields: [certificateId], references: [id], onDelete: Cascade)
+
+  @@map("certificate_audit_logs")
+}
+
+model Sponsor {
+  id                String   @id @default(uuid())
+  name              String
+  logoUrl           String
+  websiteUrl        String?
+  description       String?
+  tier              String   @default("community") // platinum, gold, silver, community
+  showOnCertificate Boolean  @default(true)
+  isActive          Boolean  @default(true)
+  createdAt         DateTime @default(now())
+
+  // Relations
+  courses Course[] @relation("CourseSponsors")
+
+  @@map("sponsors")
+}
