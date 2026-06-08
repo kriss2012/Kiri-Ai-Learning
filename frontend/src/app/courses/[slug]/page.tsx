@@ -240,7 +240,7 @@ export default function CourseDetail() {
               </div>
             ) : (
               <button
-                onClick={handleMockLogin && handleEnroll}
+                onClick={handleEnroll}
                 disabled={submitting}
                 className="w-full rounded-lg bg-gradient-to-r from-amber-500 to-amber-600 py-3 text-center text-xs font-bold text-slate-950 hover:brightness-110 hover:shadow-lg hover:shadow-amber-500/15 transition-all flex items-center justify-center space-x-1 disabled:opacity-50 cursor-pointer"
               >
