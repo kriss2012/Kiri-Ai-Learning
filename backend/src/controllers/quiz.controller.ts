@@ -1,0 +1,220 @@
+import { Response } from "express";
+import { v4 as uuidv4 } from "uuid";
+import prisma from "../config/prisma";
+import { AuthenticatedRequest } from "../middlewares/auth";
+import { checkAndCompleteCourse } from "../services/completion.service";
+
+export async function getQuiz(req: AuthenticatedRequest, res: Response) {
+  const { id: quizId } = req.params;
+  const userId = req.user?.id;
+
+  if (!userId) {
+    return res.status(401).json({ error: "Unauthorized", message: "User session required." });
+  }
+
+  try {
+    const quiz = await prisma.quiz.findUnique({
+      where: { id: quizId },
+      include: {
+        questions: {
+          select: {
+            id: true,
+            text: true,
+            type: true,
+            optionsJson: true,
+            // Exclude correctAnswerJson and explanation to prevent cheating!
+          },
+        },
+      },
+    });
+
+    if (!quiz) {
+      return res.status(404).json({ error: "Not Found", message: "Quiz not found." });
+    }
+
+    return res.status(200).json({ quiz });
+  } catch (error) {
+    console.error("Get Quiz Error:", error);
+    return res.status(500).json({ error: "Server Error", message: "Failed to load quiz." });
+  }
+}
+
+export async function startQuiz(req: AuthenticatedRequest, res: Response) {
+  const { id: quizId } = req.params;
+  const userId = req.user?.id;
+
+  if (!userId) {
+    return res.status(401).json({ error: "Unauthorized", message: "User session required." });
+  }
+
+  try {
+    const quiz = await prisma.quiz.findUnique({
+      where: { id: quizId },
+    });
+
+    if (!quiz) {
+      return res.status(404).json({ error: "Not Found", message: "Quiz not found." });
+    }
+
+    // Generate a unique session token for this attempt
+    const sessionToken = uuidv4();
+
+    const attempt = await prisma.quizAttempt.create({
+      data: {
+        userId,
+        quizId,
+        courseId: quiz.courseId,
+        sessionToken,
+        startedAt: new Date(),
+      },
+    });
+
+    return res.status(200).json({
+      message: "Quiz session started.",
+      attemptId: attempt.id,
+      sessionToken,
+      timeLimitMinutes: quiz.timeLimitMinutes,
+    });
+  } catch (error) {
+    console.error("Start Quiz Error:", error);
+    return res.status(500).json({ error: "Server Error", message: "Failed to initialize quiz session." });
+  }
+}
+
+export async function submitQuiz(req: AuthenticatedRequest, res: Response) {
+  const { id: quizId } = req.params;
+  const { attemptId, sessionToken, answers } = req.body; // answers is an object: { questionId: selectedOption }
+  const userId = req.user?.id;
+
+  if (!userId) {
+    return res.status(401).json({ error: "Unauthorized", message: "User session required." });
+  }
+
+  if (!attemptId || !sessionToken || !answers) {
+    return res.status(400).json({ error: "Bad Request", message: "Missing attemptId, sessionToken, or answers." });
+  }
+
+  try {
+    const quiz = await prisma.quiz.findUnique({
+      where: { id: quizId },
+      include: {
+        course: true,
+        questions: true,
+      },
+    });
+
+    if (!quiz) {
+      return res.status(404).json({ error: "Not Found", message: "Quiz not found." });
+    }
+
+    const attempt = await prisma.quizAttempt.findUnique({
+      where: { id: attemptId },
+    });
+
+    if (!attempt || attempt.userId !== userId || attempt.sessionToken !== sessionToken) {
+      return res.status(400).json({ error: "Invalid Attempt", message: "Verification failed for this quiz attempt." });
+    }
+
+    if (attempt.submittedAt) {
+      return res.status(400).json({ error: "Bad Request", message: "This quiz attempt has already been submitted." });
+    }
+
+    // 1. Enforce time limit (PRD SEC-FRAUD-002)
+    const timeLimitMs = quiz.timeLimitMinutes * 60 * 1000;
+    const allowedLeeWayMs = 5 * 60 * 1000; // 5 mins leeway
+    const elapsedTimeMs = Date.now() - new Date(attempt.startedAt).getTime();
+
+    if (elapsedTimeMs > timeLimitMs + allowedLeeWayMs) {
+      // Mark as submitted with zero score due to timeout
+      await prisma.quizAttempt.update({
+        where: { id: attemptId },
+        data: {
+          submittedAt: new Date(),
+          scorePercent: 0,
+          passed: false,
+          answersJson: JSON.stringify(answers),
+        },
+      });
+      return res.status(400).json({
+        error: "Timeout",
+        message: "Submission rejected because the quiz duration limit was exceeded.",
+      });
+    }
+
+    // 2. Evaluate answers
+    let correctCount = 0;
+    const questions = quiz.questions;
+    const evaluationResults: Array<{
+      questionId: string;
+      text: string;
+      userAnswer: any;
+      correctAnswer: any;
+      isCorrect: boolean;
+      explanation: string | null;
+    }> = [];
+
+    questions.forEach((q) => {
+      const userAnswer = answers[q.id];
+      const correctAnswer = JSON.parse(q.correctAnswerJson);
+      
+      let isCorrect = false;
+
+      // Handle simple string comparisons or array comparisons
+      if (Array.isArray(correctAnswer)) {
+        if (Array.isArray(userAnswer)) {
+          isCorrect = 
+            userAnswer.length === correctAnswer.length &&
+            userAnswer.every((val) => correctAnswer.includes(val));
+        }
+      } else {
+        isCorrect = String(userAnswer).trim().toLowerCase() === String(correctAnswer).trim().toLowerCase();
+      }
+
+      if (isCorrect) {
+        correctCount++;
+      }
+
+      evaluationResults.push({
+        questionId: q.id,
+        text: q.text,
+        userAnswer: userAnswer || null,
+        correctAnswer,
+        isCorrect,
+        explanation: q.explanation,
+      });
+    });
+
+    const scorePercent = questions.length > 0 ? Math.round((correctCount / questions.length) * 100) : 100;
+    const minPassScore = quiz.isFinal ? quiz.course.minPassScore : 70; // 70% for modules, course-specific for finals
+    const passed = scorePercent >= minPassScore;
+
+    // 3. Update attempt record
+    const updatedAttempt = await prisma.quizAttempt.update({
+      where: { id: attemptId },
+      data: {
+        submittedAt: new Date(),
+        scorePercent,
+        passed,
+        answersJson: JSON.stringify(answers),
+      },
+    });
+
+    // 4. If this is the final assessment, run completion check
+    let completionResult = null;
+    if (quiz.isFinal && passed) {
+      completionResult = await checkAndCompleteCourse(userId, quiz.courseId, scorePercent);
+    }
+
+    return res.status(200).json({
+      message: passed ? "Congratulations, you passed!" : "You did not achieve the passing score. Please try again.",
+      scorePercent,
+      minPassScore,
+      passed,
+      results: evaluationResults,
+      completion: completionResult,
+    });
+  } catch (error) {
+    console.error("Submit Quiz Error:", error);
+    return res.status(500).json({ error: "Server Error", message: "Failed to evaluate quiz submission." });
+  }
+}
