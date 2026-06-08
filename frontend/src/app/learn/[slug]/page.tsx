@@ -5,8 +5,8 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, BookOpen, CheckCircle, PlayCircle, Award, Hourglass, HelpCircle } from "lucide-react";
 import confetti from "canvas-confetti";
-import Navbar from "../../../components/Navbar";
-import { fetchApi } from "../../../lib/api";
+import Navbar from "@/components/Navbar";
+import { fetchApi } from "@/lib/api";
 
 export default function LearningWorkspace() {
   const { slug } = useParams();
