@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { ShieldCheck, ShieldAlert, Award, Calendar, Clock, Download, ExternalLink, RefreshCw, GraduationCap } from "lucide-react";
-import Navbar from "../../../components/Navbar";
+import Navbar from "@/components/Navbar";
 
 interface VerificationPayload {
   verified: boolean;
