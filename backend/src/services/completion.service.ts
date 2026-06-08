@@ -23,7 +23,7 @@ export async function checkAndCompleteCourse(userId: string, courseId: string, f
       };
     }
 
-    // 2. Load all course lessons
+    // 2. Load all course details
     const course = await prisma.course.findUnique({
       where: { id: courseId },
       include: {
@@ -35,9 +35,36 @@ export async function checkAndCompleteCourse(userId: string, courseId: string, f
       throw new Error(`Course with ID ${courseId} not found.`);
     }
 
-    const totalLessons = course.lessons.length;
+    // 3. Enforce Genuineness: Check enrollment exists and verify minimum duration threshold
+    const enrollment = await prisma.enrollment.findUnique({
+      where: {
+        userId_courseId: { userId, courseId },
+      },
+    });
 
-    // 3. Count completed lessons for this user
+    if (!enrollment) {
+      return {
+        completed: false,
+        reason: "You are not enrolled in this course.",
+      };
+    }
+
+    // Allow mock developer users to skip minimum duration validation
+    const isMockUser = userId.includes("mock-student") || userId.includes("mock-instructor");
+    if (!isMockUser) {
+      const elapsedMs = Date.now() - new Date(enrollment.createdAt).getTime();
+      // Minimum duration required: 5% of durationHours (e.g. 12 minutes for a 4 hour course)
+      const minDurationMs = course.durationHours * 0.05 * 60 * 60 * 1000;
+      if (elapsedMs < minDurationMs) {
+        return {
+          completed: false,
+          reason: `Course completion flagged: Elapsed time since enrollment (${Math.round(elapsedMs / 60000)} mins) is too low for course length. Minimum requirement is ${Math.round(minDurationMs / 60000)} mins.`,
+        };
+      }
+    }
+
+    // 4. Count completed lessons for this user
+    const totalLessons = course.lessons.length;
     const completedProgressCount = await prisma.lessonProgress.count({
       where: {
         userId,
@@ -53,7 +80,29 @@ export async function checkAndCompleteCourse(userId: string, courseId: string, f
       };
     }
 
-    // 4. Record course completion
+    // 5. Enforce Genuineness: Check that all quizzes (module checkpoints and finals) in the course have been successfully passed
+    const courseQuizzes = await prisma.quiz.findMany({
+      where: { courseId },
+    });
+
+    for (const quiz of courseQuizzes) {
+      const passedAttempt = await prisma.quizAttempt.findFirst({
+        where: {
+          userId,
+          quizId: quiz.id,
+          passed: true,
+        },
+      });
+
+      if (!passedAttempt) {
+        return {
+          completed: false,
+          reason: `Completion denied: You have not passed the quiz "${quiz.title}" yet. All checkpoints must be passed.`,
+        };
+      }
+    }
+
+    // 6. Record course completion
     const completion = await prisma.courseCompletion.create({
       data: {
         userId,
@@ -64,7 +113,7 @@ export async function checkAndCompleteCourse(userId: string, courseId: string, f
 
     console.log(`🎓 Course completed by user ${userId} for course ${course.title}. Score: ${finalScore}%`);
 
-    // 5. Generate cryptographically signed certificate
+    // 7. Generate cryptographically signed certificate
     let certificate = null;
     let certError = null;
     try {
