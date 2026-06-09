@@ -8,6 +8,12 @@ import confetti from "canvas-confetti";
 import Navbar from "@/components/Navbar";
 import { fetchApi } from "@/lib/api";
 
+function getYouTubeId(url: string) {
+  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+  const match = url.match(regExp);
+  return (match && match[2].length === 11) ? match[2] : null;
+}
+
 export default function LearningWorkspace() {
   const { slug } = useParams();
   const router = useRouter();
@@ -26,6 +32,9 @@ export default function LearningWorkspace() {
   const [completingLesson, setCompletingLesson] = useState(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const heartbeatIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const [isYouTube, setIsYouTube] = useState(false);
+  const [ytVideoId, setYtVideoId] = useState<string | null>(null);
+  const ytPlayheadRef = useRef<number>(0);
 
   // Quiz state
   const [activeQuiz, setActiveQuiz] = useState<any>(null);
@@ -101,20 +110,77 @@ export default function LearningWorkspace() {
 
   // Handle Video progress heartbeat
   useEffect(() => {
-    if (activeLesson && activeLesson.contentType === "video" && videoRef.current) {
+    if (activeLesson && activeLesson.contentType === "video") {
+      const isYt = activeLesson.contentUrl.includes("youtube.com") || activeLesson.contentUrl.includes("youtu.be");
+      
       // Start lesson on backend
       fetchApi(`/lessons/${activeLesson.id}/start`, { method: "POST" }).catch(() => {});
 
-      // Set up heartbeat timer
-      heartbeatIntervalRef.current = setInterval(() => {
-        if (videoRef.current) {
-          const currentTime = Math.round(videoRef.current.currentTime);
+      if (isYt) {
+        const ytId = getYouTubeId(activeLesson.contentUrl);
+        setIsYouTube(true);
+        setYtVideoId(ytId);
+        ytPlayheadRef.current = 0;
+
+        // Ticker increments playhead every second
+        const ticker = setInterval(() => {
+          ytPlayheadRef.current += 1;
+        }, 1000);
+
+        // Send heartbeat every 15 seconds
+        heartbeatIntervalRef.current = setInterval(() => {
           fetchApi(`/lessons/${activeLesson.id}/heartbeat`, {
             method: "POST",
-            body: JSON.stringify({ lastPositionSeconds: currentTime }),
+            body: JSON.stringify({ lastPositionSeconds: ytPlayheadRef.current }),
           }).catch(() => {});
+        }, 15000);
+
+        return () => {
+          clearInterval(ticker);
+          if (heartbeatIntervalRef.current) clearInterval(heartbeatIntervalRef.current);
+        };
+      } else {
+        setIsYouTube(false);
+        setYtVideoId(null);
+
+        // Setup HTML5 video heartbeat
+        let checkInterval: NodeJS.Timeout | null = null;
+        
+        const setupHtml5Heartbeat = () => {
+          if (heartbeatIntervalRef.current) clearInterval(heartbeatIntervalRef.current);
+          heartbeatIntervalRef.current = setInterval(() => {
+            if (videoRef.current) {
+              const currentTime = Math.round(videoRef.current.currentTime);
+              fetchApi(`/lessons/${activeLesson.id}/heartbeat`, {
+                method: "POST",
+                body: JSON.stringify({ lastPositionSeconds: currentTime }),
+              }).catch(() => {});
+            }
+          }, 15000);
+        };
+
+        if (videoRef.current) {
+          setupHtml5Heartbeat();
+        } else {
+          // Retry setup if video ref isn't immediately bound
+          let attempts = 0;
+          checkInterval = setInterval(() => {
+            attempts++;
+            if (videoRef.current) {
+              if (checkInterval) clearInterval(checkInterval);
+              setupHtml5Heartbeat();
+            }
+            if (attempts > 10) {
+              if (checkInterval) clearInterval(checkInterval);
+            }
+          }, 1000);
         }
-      }, 15000); // Send heartbeat every 15 seconds
+
+        return () => {
+          if (checkInterval) clearInterval(checkInterval);
+          if (heartbeatIntervalRef.current) clearInterval(heartbeatIntervalRef.current);
+        };
+      }
     }
 
     return () => {
@@ -254,6 +320,17 @@ export default function LearningWorkspace() {
     );
   }
 
+  // Calculate progress percentage
+  const totalLessons = course?.modules.reduce((acc: number, m: any) => acc + m.lessons.length, 0) || 0;
+  const totalQuizzes = course?.modules.reduce((acc: number, m: any) => acc + m.quizzes.length, 0) || 0;
+  const completedLessonsCount = enrollment?.completedLessons.length || 0;
+  const completedQuizzesCount = Object.keys(enrollment?.completedQuizzes || {}).filter(
+    (qId) => enrollment.completedQuizzes[qId]?.passed
+  ).length || 0;
+  const totalItems = totalLessons + totalQuizzes;
+  const completedItems = completedLessonsCount + completedQuizzesCount;
+  const progressPercent = totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0;
+
   // Format seconds to MM:SS
   const formatTime = (secs: number) => {
     const m = Math.floor(secs / 60);
@@ -268,15 +345,29 @@ export default function LearningWorkspace() {
       <div className="flex flex-grow overflow-hidden">
         {/* Sidebar */}
         <aside className="w-80 border-r border-slate-800/80 bg-slate-950/40 flex flex-col overflow-y-auto hidden md:flex">
-          <div className="p-4 border-b border-slate-800">
-            <Link href={`/courses/${slug}`} className="inline-flex items-center space-x-1.5 text-xs text-slate-400 hover:text-amber-500 font-bold">
+          <div className="p-4 border-b border-slate-800 bg-slate-950/60">
+            <Link href={`/courses/${slug}`} className="inline-flex items-center space-x-1.5 text-xs text-slate-400 hover:text-amber-500 font-bold transition-colors">
               <ArrowLeft className="h-3.5 w-3.5" />
               <span>Back to Overview</span>
             </Link>
             <h2 className="text-sm font-extrabold text-slate-200 mt-3 line-clamp-1">{course?.title}</h2>
+            
+            {/* Progress bar in sidebar */}
+            <div className="mt-4 space-y-1.5">
+              <div className="flex justify-between text-[10px] font-bold">
+                <span className="text-slate-400">YOUR PATHWAY PROGRESS</span>
+                <span className="text-amber-500">{progressPercent}%</span>
+              </div>
+              <div className="w-full bg-slate-900 rounded-full h-1.5 border border-slate-800/60 overflow-hidden">
+                <div
+                  className="bg-gradient-to-r from-amber-500 to-amber-600 h-full rounded-full transition-all duration-500"
+                  style={{ width: `${progressPercent}%` }}
+                ></div>
+            </div>
           </div>
+        </div>
 
-          <div className="flex-grow p-4 space-y-6">
+        <div className="flex-grow p-4 space-y-6">
             {course?.modules.map((module: any) => (
               <div key={module.id} className="space-y-2">
                 <h3 className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
@@ -350,13 +441,23 @@ export default function LearningWorkspace() {
               <div className="p-8 space-y-6 flex-grow">
                 {activeLesson.contentType === "video" ? (
                   <div className="aspect-video w-full max-w-4xl mx-auto bg-slate-950 rounded-xl overflow-hidden border border-slate-800 shadow-2xl relative">
-                    <video
-                      ref={videoRef}
-                      src={activeLesson.contentUrl}
-                      controls
-                      controlsList="nodownload"
-                      className="w-full h-full"
-                    />
+                    {isYouTube && ytVideoId ? (
+                      <iframe
+                        src={`https://www.youtube.com/embed/${ytVideoId}?autoplay=1&rel=0`}
+                        title={activeLesson.title}
+                        className="w-full h-full border-0"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                      />
+                    ) : (
+                      <video
+                        ref={videoRef}
+                        src={activeLesson.contentUrl}
+                        controls
+                        controlsList="nodownload"
+                        className="w-full h-full"
+                      />
+                    )}
                   </div>
                 ) : (
                   <div className="max-w-3xl mx-auto glass p-8 rounded-xl border border-slate-800 prose prose-invert">
