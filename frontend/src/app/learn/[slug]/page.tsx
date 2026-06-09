@@ -331,6 +331,30 @@ export default function LearningWorkspace() {
   const completedItems = completedLessonsCount + completedQuizzesCount;
   const progressPercent = totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0;
 
+  const totalLessonSeconds = course?.modules.reduce(
+    (acc: number, m: any) => acc + m.lessons.reduce((lAcc: number, l: any) => lAcc + l.durationSeconds, 0),
+    0
+  ) || 0;
+
+  const completedLessonSeconds = course?.modules.reduce(
+    (acc: number, m: any) => acc + m.lessons.reduce((lAcc: number, l: any) => {
+      const isCompleted = enrollment?.completedLessons.includes(l.id);
+      return lAcc + (isCompleted ? l.durationSeconds : 0);
+    }, 0),
+    0
+  ) || 0;
+
+  const remainingSeconds = Math.max(0, totalLessonSeconds - completedLessonSeconds);
+
+  const formatDuration = (seconds: number) => {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.round((seconds % 3600) / 60);
+    if (hours > 0) {
+      return `${hours}h ${minutes}m`;
+    }
+    return `${minutes}m`;
+  };
+
   // Format seconds to MM:SS
   const formatTime = (secs: number) => {
     const m = Math.floor(secs / 60);
@@ -363,6 +387,10 @@ export default function LearningWorkspace() {
                   className="bg-gradient-to-r from-amber-500 to-amber-600 h-full rounded-full transition-all duration-500"
                   style={{ width: `${progressPercent}%` }}
                 ></div>
+            </div>
+            <div className="flex justify-between text-[9px] text-slate-500 font-bold mt-1.5">
+                <span>Completed: {formatDuration(completedLessonSeconds)}</span>
+                <span>Remaining: {formatDuration(remainingSeconds)}</span>
             </div>
           </div>
         </div>
