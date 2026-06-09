@@ -9,6 +9,14 @@ exports.submitQuiz = submitQuiz;
 const uuid_1 = require("uuid");
 const prisma_1 = __importDefault(require("../config/prisma"));
 const completion_service_1 = require("../services/completion.service");
+function shuffleArray(array) {
+    const arr = [...array];
+    for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+}
 async function getQuiz(req, res) {
     const { id: quizId } = req.params;
     const userId = req.user?.id;
@@ -33,7 +41,26 @@ async function getQuiz(req, res) {
         if (!quiz) {
             return res.status(404).json({ error: "Not Found", message: "Quiz not found." });
         }
-        return res.status(200).json({ quiz });
+        // Shuffle questions and their options per request (7.1)
+        const shuffledQuestions = shuffleArray(quiz.questions).map((q) => {
+            let options = [];
+            try {
+                options = JSON.parse(q.optionsJson);
+            }
+            catch (err) {
+                options = [];
+            }
+            const shuffledOptions = shuffleArray(options);
+            return {
+                ...q,
+                optionsJson: JSON.stringify(shuffledOptions),
+            };
+        });
+        const shuffledQuiz = {
+            ...quiz,
+            questions: shuffledQuestions,
+        };
+        return res.status(200).json({ quiz: shuffledQuiz });
     }
     catch (error) {
         console.error("Get Quiz Error:", error);
@@ -52,6 +79,38 @@ async function startQuiz(req, res) {
         });
         if (!quiz) {
             return res.status(404).json({ error: "Not Found", message: "Quiz not found." });
+        }
+        // Enforce retake policy on final assessment (BUG-03)
+        if (quiz.isFinal) {
+            const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+            const recentAttempts = await prisma_1.default.quizAttempt.findMany({
+                where: {
+                    userId,
+                    quizId: quiz.id,
+                    startedAt: { gte: sevenDaysAgo },
+                },
+                orderBy: { startedAt: "desc" },
+            });
+            if (recentAttempts.length >= 3) {
+                const nextAvailableAt = new Date(recentAttempts[2].startedAt.getTime() + 7 * 24 * 60 * 60 * 1000);
+                return res.status(429).json({
+                    error: "MAX_ATTEMPTS_REACHED",
+                    message: `You have reached the maximum of 3 final exam attempts in a 7-day window. Next attempt available at ${nextAvailableAt.toLocaleString()}.`,
+                    nextAvailableAt,
+                });
+            }
+            const lastAttempt = recentAttempts[0];
+            if (lastAttempt && lastAttempt.submittedAt && !lastAttempt.passed) {
+                // Enforce 24-hour cooldown after failed attempt
+                const cooldownEnd = new Date(lastAttempt.submittedAt.getTime() + 24 * 60 * 60 * 1000);
+                if (new Date() < cooldownEnd) {
+                    return res.status(429).json({
+                        error: "COOLDOWN_ACTIVE",
+                        message: `You must wait 24 hours after a failed attempt before retaking the final exam. Available at ${cooldownEnd.toLocaleString()}.`,
+                        cooldownEnd,
+                    });
+                }
+            }
         }
         // Generate a unique session token for this attempt
         const sessionToken = (0, uuid_1.v4)();
