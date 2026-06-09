@@ -192,7 +192,7 @@ export async function generateCertificate(
 
     // Wait for the stream to finish writing
     await new Promise((resolve, reject) => {
-      writeStream.on("finish", resolve);
+      writeStream.on("finish", () => resolve(true));
       writeStream.on("error", reject);
     });
 
