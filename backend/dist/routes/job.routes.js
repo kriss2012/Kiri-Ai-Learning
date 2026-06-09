@@ -1,0 +1,10 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.jobRouter = void 0;
+const express_1 = require("express");
+const job_controller_1 = require("../controllers/job.controller");
+const auth_1 = require("../middlewares/auth");
+const jobRouter = (0, express_1.Router)();
+exports.jobRouter = jobRouter;
+jobRouter.get("/", auth_1.optionalAuth, job_controller_1.getJobs);
+jobRouter.post("/:id/apply", auth_1.requireAuth, job_controller_1.applyToJob);
