@@ -1,0 +1,23 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.apiRouter = void 0;
+const express_1 = require("express");
+const auth_routes_1 = require("./auth.routes");
+const course_routes_1 = require("./course.routes");
+const lesson_routes_1 = require("./lesson.routes");
+const quiz_routes_1 = require("./quiz.routes");
+const cert_routes_1 = require("./cert.routes");
+const verify_routes_1 = require("./verify.routes");
+const job_routes_1 = require("./job.routes");
+const apiRouter = (0, express_1.Router)();
+exports.apiRouter = apiRouter;
+apiRouter.get("/health", (req, res) => {
+    res.status(200).json({ status: "ok" });
+});
+apiRouter.use("/auth", auth_routes_1.authRouter);
+apiRouter.use("/courses", course_routes_1.courseRouter);
+apiRouter.use("/lessons", lesson_routes_1.lessonRouter);
+apiRouter.use("/quizzes", quiz_routes_1.quizRouter);
+apiRouter.use("/certificates", cert_routes_1.certRouter);
+apiRouter.use("/verify", verify_routes_1.verifyRouter);
+apiRouter.use("/jobs", job_routes_1.jobRouter);
