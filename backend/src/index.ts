@@ -49,6 +49,10 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
   });
 });
 
-app.listen(PORT, () => {
-  console.log(`🚀 Kiri AI Learning Backend running on http://localhost:${PORT}`);
-});
+if (!process.env.VERCEL) {
+  app.listen(PORT, () => {
+    console.log(`🚀 Kiri AI Learning Backend running on http://localhost:${PORT}`);
+  });
+}
+
+export default app;
