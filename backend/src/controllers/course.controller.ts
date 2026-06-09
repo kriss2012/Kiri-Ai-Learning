@@ -87,6 +87,7 @@ export async function getCourseBySlug(req: AuthenticatedRequest, res: Response) 
     let completedLessons: string[] = [];
     let lessonWatchProgress: Record<string, { status: string; watchSeconds: number; lastPositionSeconds: number }> = {};
     let completedQuizzes: Record<string, { passed: boolean; scorePercent: number }> = {};
+    let progressPercent = 0;
 
     if (userId) {
       // Check enrollment
@@ -125,18 +126,32 @@ export async function getCourseBySlug(req: AuthenticatedRequest, res: Response) 
           const passed = attempt.passed || false;
           const score = attempt.scorePercent || 0;
 
-          if (!existing || score > existing.scorePercent) {
-            completedQuizzes[attempt.quizId] = { passed, scorePercent: score };
           }
+        });
+        const totalLessonsCount = course.modules.reduce((acc, m) => acc + m.lessons.length, 0);
+        progressPercent = totalLessonsCount > 0 
+          ? Math.round((completedLessons.length / totalLessonsCount) * 100) 
+          : 0;
+
+        // Fetch certificate if it exists
+        const certificate = await prisma.certificate.findFirst({
+          where: { userId, courseId: course.id },
+        });
+        const certificateId = certificate?.certificateId || null;
+
+        return res.status(200).json({
+          course,
+          enrollment: {
+            isEnrolled,
+            progressPercent,
+            completedLessons,
+            lessonWatchProgress,
+            completedQuizzes,
+            certificateId,
+          },
         });
       }
     }
-
-    // Map completion details directly into the response payload structure
-    const totalLessonsCount = course.modules.reduce((acc, m) => acc + m.lessons.length, 0);
-    const progressPercent = totalLessonsCount > 0 
-      ? Math.round((completedLessons.length / totalLessonsCount) * 100) 
-      : 0;
 
     return res.status(200).json({
       course,
@@ -146,6 +161,7 @@ export async function getCourseBySlug(req: AuthenticatedRequest, res: Response) 
         completedLessons,
         lessonWatchProgress,
         completedQuizzes,
+        certificateId: null,
       },
     });
   } catch (error) {
