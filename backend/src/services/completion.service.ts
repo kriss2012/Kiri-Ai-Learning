@@ -50,7 +50,10 @@ export async function checkAndCompleteCourse(userId: string, courseId: string, f
     }
 
     // Allow mock developer users to skip minimum duration validation
-    const isMockUser = userId.includes("mock-student") || userId.includes("mock-instructor");
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    const isMockUser = user
+      ? (user.firebaseUid.includes("mock") || user.email.includes("mock") || user.email.includes("student@kiriapp.com"))
+      : false;
     if (!isMockUser) {
       const elapsedMs = Date.now() - new Date(enrollment.enrolledAt).getTime();
       // Minimum duration required: 5% of durationHours (e.g. 12 minutes for a 4 hour course)
