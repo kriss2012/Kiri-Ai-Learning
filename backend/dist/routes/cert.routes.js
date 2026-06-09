@@ -1,0 +1,10 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.certRouter = void 0;
+const express_1 = require("express");
+const cert_controller_1 = require("../controllers/cert.controller");
+const auth_1 = require("../middlewares/auth");
+const certRouter = (0, express_1.Router)();
+exports.certRouter = certRouter;
+certRouter.get("/", auth_1.requireAuth, cert_controller_1.getMyCertificates);
+certRouter.get("/:cert_id/download", auth_1.requireAuth, cert_controller_1.downloadCertificate);
