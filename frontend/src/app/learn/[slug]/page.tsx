@@ -356,18 +356,18 @@ export default function LearningWorkspace() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0B0F19] text-slate-100 flex flex-col h-screen overflow-hidden">
+    <div className="min-h-screen bg-[#080C15] text-slate-100 flex flex-col h-screen overflow-hidden">
       <Navbar />
 
       <div className="flex flex-grow overflow-hidden">
         {/* Sidebar */}
-        <aside className="w-80 border-r border-slate-800/80 bg-slate-950/40 flex flex-col overflow-y-auto hidden md:flex">
-          <div className="p-4 border-b border-slate-800 bg-slate-950/60">
-            <Link href={`/courses/${slug}`} className="inline-flex items-center space-x-1.5 text-xs text-slate-400 hover:text-amber-500 font-bold transition-colors">
-              <ArrowLeft className="h-3.5 w-3.5" />
+        <aside className="w-72 border-r border-white/5 bg-[#080C15] flex flex-col overflow-y-auto hidden md:flex">
+          <div className="p-5 border-b border-white/5 bg-black/20">
+            <Link href={`/courses/${slug}`} className="inline-flex items-center space-x-1.5 text-[11px] text-slate-500 hover:text-amber-400 font-semibold transition-colors group">
+              <ArrowLeft className="h-3 w-3 group-hover:-translate-x-0.5 transition-transform" />
               <span>Back to Overview</span>
             </Link>
-            <h2 className="text-sm font-extrabold text-slate-200 mt-3 line-clamp-1">{course?.title}</h2>
+            <h2 className="text-sm font-bold text-slate-200 mt-3 line-clamp-2 leading-snug">{course?.title}</h2>
 
             {enrollment?.certificateId && (
               <div className="mt-4 p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-center space-y-2">
@@ -384,52 +384,56 @@ export default function LearningWorkspace() {
             
             {/* Progress bar in sidebar */}
             <div className="mt-4 space-y-1.5">
-              <div className="flex justify-between text-[10px] font-bold">
-                <span className="text-slate-400">YOUR PATHWAY PROGRESS</span>
-                <span className="text-amber-500">{progressPercent}%</span>
+              <div className="flex justify-between text-[10px] font-semibold">
+                <span className="text-slate-500 tracking-wider uppercase">Progress</span>
+                <span className="text-amber-500 font-bold">{progressPercent}%</span>
               </div>
-              <div className="w-full bg-slate-900 rounded-full h-1.5 border border-slate-800/60 overflow-hidden">
+              <div className="w-full bg-white/5 rounded-full h-1.5 overflow-hidden">
                 <div
-                  className="bg-gradient-to-r from-amber-500 to-amber-600 h-full rounded-full transition-all duration-500"
+                  className="bg-gradient-to-r from-amber-500 to-amber-400 h-full rounded-full transition-all duration-700 shadow-[0_0_8px_rgba(245,158,11,0.5)]"
                   style={{ width: `${progressPercent}%` }}
-                ></div>
-            </div>
-            <div className="flex justify-between text-[9px] text-slate-500 font-bold mt-1.5">
-                <span>Completed: {formatDuration(completedLessonSeconds)}</span>
-                <span>Remaining: {formatDuration(remainingSeconds)}</span>
+                />
+              </div>
+              <div className="flex justify-between text-[10px] text-slate-600 mt-1">
+                <span>✓ {formatDuration(completedLessonSeconds)}</span>
+                <span>{formatDuration(remainingSeconds)} left</span>
+              </div>
             </div>
           </div>
-        </div>
 
-        <div className="flex-grow p-4 space-y-6">
+        <div className="flex-grow p-3 space-y-5">
             {course?.modules.map((module: any) => (
-              <div key={module.id} className="space-y-2">
-                <h3 className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                  Mod {module.order}: {module.title}
-                </h3>
+              <div key={module.id} className="space-y-1.5">
+                <div className="px-2 py-1.5">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-600">
+                    Module {module.order}
+                  </p>
+                  <p className="text-[11px] font-semibold text-slate-400 mt-0.5">{module.title}</p>
+                </div>
                 
-                <div className="space-y-1">
+                <div className="space-y-0.5">
                   {module.lessons.map((lesson: any) => {
                     const isCompleted = enrollment?.completedLessons.includes(lesson.id) || false;
                     const isActive = activeLessonId === lesson.id;
-                    
                     return (
                       <button
                         key={lesson.id}
                         onClick={() => router.push(`/learn/${slug}?lesson=${lesson.id}`)}
-                        className={`w-full flex items-center justify-between rounded-lg px-3 py-2 text-left text-xs transition-colors cursor-pointer ${
-                          isActive ? "bg-amber-500/10 text-amber-500 border border-amber-500/20" : "text-slate-400 hover:bg-slate-900/50 hover:text-slate-200"
+                        className={`w-full flex items-center justify-between rounded-lg px-3 py-2.5 text-left transition-all cursor-pointer ${
+                          isActive
+                            ? "bg-amber-500/10 text-amber-400 border border-amber-500/25 shadow-[0_0_12px_rgba(245,158,11,0.08)]"
+                            : "text-slate-500 hover:bg-white/4 hover:text-slate-300 border border-transparent"
                         }`}
                       >
-                        <div className="flex items-center space-x-2 max-w-[190px]">
+                        <div className="flex items-center space-x-2.5 min-w-0">
                           {isCompleted ? (
                             <CheckCircle className="h-3.5 w-3.5 text-emerald-500 flex-shrink-0" />
                           ) : (
-                            <PlayCircle className="h-3.5 w-3.5 text-slate-500 flex-shrink-0" />
+                            <PlayCircle className={`h-3.5 w-3.5 flex-shrink-0 ${isActive ? 'text-amber-400' : 'text-slate-600'}`} />
                           )}
-                          <span className="truncate">{lesson.title}</span>
+                          <span className="truncate text-[11px] font-medium">{lesson.title}</span>
                         </div>
-                        <span className="text-[9px] text-slate-500">{Math.round(lesson.durationSeconds / 60)}m</span>
+                        <span className="text-[10px] text-slate-600 flex-shrink-0 ml-1">{Math.round(lesson.durationSeconds / 60)}m</span>
                       </button>
                     );
                   })}
@@ -438,19 +442,21 @@ export default function LearningWorkspace() {
                     const quizResultState = enrollment?.completedQuizzes[quiz.id];
                     const isCompleted = quizResultState?.passed || false;
                     const isActive = activeQuizId === quiz.id;
-
                     return (
                       <button
                         key={quiz.id}
                         onClick={() => router.push(`/learn/${slug}?quiz=${quiz.id}`)}
-                        className={`w-full flex items-center justify-between rounded-lg px-3 py-2 text-left text-xs transition-colors cursor-pointer ${
-                          isActive ? "bg-amber-500/10 text-amber-500 border border-amber-500/20" : "text-slate-400 hover:bg-slate-900/50 hover:text-slate-200"
+                        className={`w-full flex items-center justify-between rounded-lg px-3 py-2.5 text-left transition-all cursor-pointer ${
+                          isActive
+                            ? "bg-amber-500/10 text-amber-400 border border-amber-500/25"
+                            : "text-slate-500 hover:bg-white/4 hover:text-slate-300 border border-transparent"
                         }`}
                       >
-                        <div className="flex items-center space-x-2">
-                          <Award className={`h-3.5 w-3.5 ${isCompleted ? "text-emerald-500" : "text-amber-500"}`} />
-                          <span className="font-semibold truncate">{quiz.title}</span>
+                        <div className="flex items-center space-x-2.5 min-w-0">
+                          <Award className={`h-3.5 w-3.5 flex-shrink-0 ${isCompleted ? 'text-emerald-500' : 'text-amber-500/70'}`} />
+                          <span className="text-[11px] font-semibold truncate">{quiz.title}</span>
                         </div>
+                        {isCompleted && <CheckCircle className="h-3 w-3 text-emerald-500 flex-shrink-0" />}
                       </button>
                     );
                   })}
@@ -461,55 +467,60 @@ export default function LearningWorkspace() {
         </aside>
 
         {/* Content Workspace */}
-        <main className="flex-grow flex flex-col bg-slate-950/20 overflow-y-auto">
+        <main className="flex-grow flex flex-col bg-[#080C15] overflow-y-auto">
           {/* Active Lesson View */}
           {activeLesson && (
             <div className="flex flex-col h-full">
               {/* Header Bar */}
-              <div className="px-8 py-4 border-b border-slate-800/80 bg-slate-950/30 flex justify-between items-center flex-shrink-0">
-                <span className="text-xs font-bold text-amber-500 uppercase tracking-wider">{activeLesson.contentType} Lesson</span>
-                <h2 className="text-sm font-bold text-slate-200">{activeLesson.title}</h2>
+              <div className="px-6 py-3.5 border-b border-white/5 bg-black/30 flex justify-between items-center flex-shrink-0">
+                <span className="badge badge-amber">{activeLesson.contentType}</span>
+                <h2 className="text-sm font-semibold text-slate-300 truncate max-w-md">{activeLesson.title}</h2>
               </div>
 
               {/* Lesson body container */}
-              <div className="p-8 space-y-6 flex-grow">
+              <div className="p-6 lg:p-8 space-y-6 flex-grow">
                 {activeLesson.contentType === "video" ? (
-                  <div className="aspect-video w-full max-w-4xl mx-auto bg-slate-950 rounded-xl overflow-hidden border border-slate-800 shadow-2xl relative">
-                    {isYouTube && ytVideoId ? (
-                      <iframe
-                        src={`https://www.youtube.com/embed/${ytVideoId}?autoplay=1&rel=0`}
-                        title={activeLesson.title}
-                        className="w-full h-full border-0"
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                        allowFullScreen
-                      />
-                    ) : (
-                      <video
-                        ref={videoRef}
-                        src={activeLesson.contentUrl}
-                        controls
-                        controlsList="nodownload"
-                        className="w-full h-full"
-                      />
-                    )}
+                  <div className="max-w-4xl mx-auto">
+                    <div className="relative rounded-xl overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.7)] border border-white/8" style={{paddingTop: '56.25%'}}>
+                      {isYouTube && ytVideoId ? (
+                        <iframe
+                          src={`https://www.youtube.com/embed/${ytVideoId}?rel=0&modestbranding=1`}
+                          title={activeLesson.title}
+                          className="absolute inset-0 w-full h-full border-0"
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                          allowFullScreen
+                        />
+                      ) : (
+                        <video
+                          ref={videoRef}
+                          src={activeLesson.contentUrl}
+                          controls
+                          controlsList="nodownload"
+                          className="absolute inset-0 w-full h-full"
+                        />
+                      )}
+                    </div>
                   </div>
                 ) : (
-                  <div className="max-w-3xl mx-auto glass p-8 rounded-xl border border-slate-800 prose prose-invert">
-                    <div className="text-sm leading-relaxed text-slate-300 whitespace-pre-wrap">
-                      {activeLesson.textContent}
+                  <div className="max-w-3xl mx-auto">
+                    <div className="glass rounded-xl border border-white/6 p-8">
+                      <div className="reading-content whitespace-pre-wrap">
+                        {activeLesson.textContent}
+                      </div>
                     </div>
                   </div>
                 )}
 
                 {/* Bottom Complete Bar */}
-                <div className="flex justify-center pt-8 border-t border-slate-900 max-w-4xl mx-auto">
+                <div className="max-w-4xl mx-auto pt-4 border-t border-white/5 flex items-center justify-between">
+                  <p className="text-xs text-slate-600">Mark as done when you are ready to proceed</p>
                   <button
                     onClick={handleCompleteLesson}
                     disabled={completingLesson}
-                    className="rounded-lg bg-emerald-600 hover:bg-emerald-500 px-8 py-3 text-xs font-bold text-slate-100 hover:shadow-lg hover:shadow-emerald-500/10 transition-all flex items-center space-x-2 disabled:opacity-50 cursor-pointer"
+                    className="inline-flex items-center space-x-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 px-6 py-2.5 text-xs font-bold text-white shadow-[0_4px_16px_rgba(16,185,129,0.25)] hover:shadow-[0_6px_20px_rgba(16,185,129,0.35)] transition-all disabled:opacity-50 cursor-pointer"
                   >
                     <span>{completingLesson ? "Processing..." : "Complete & Continue"}</span>
-                    <CheckCircle className="h-4 w-4" />
+                    <CheckCircle className="h-3.5 w-3.5" />
                   </button>
                 </div>
               </div>
