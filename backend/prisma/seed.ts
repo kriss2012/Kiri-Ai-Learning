@@ -527,6 +527,74 @@ In a distributed tech environment, written messages on Slack, Teams, or Email re
   });
 
 
+  // 9. Create Course: Resume & LinkedIn Mastery
+  const courseResume = await prisma.course.create({
+    data: {
+      title: "Resume & LinkedIn Mastery",
+      slug: "resume-linkedin-mastery",
+      description: "Build an ATS-compliant resume and a highly discoverable LinkedIn profile to secure internships and placement interviews in tech and business domains.",
+      shortDescription: "Craft a standout resume and optimize your LinkedIn presence to attract top recruiters.",
+      category: "employability",
+      subCategory: "Resume Building",
+      level: "beginner",
+      durationHours: 2.0,
+      thumbnailUrl: "https://images.unsplash.com/photo-1586281380349-632531db7ed4",
+      instructorId: instructor.id,
+      minPassScore: 70,
+      status: "published",
+      publishedAt: new Date(),
+    },
+  });
+  console.log(`📚 Course created: ${courseResume.title}`);
+
+  // Module 1 for Resume
+  const moduleResume1 = await prisma.module.create({
+    data: {
+      courseId: courseResume.id,
+      title: "ATS Resume Secrets",
+      order: 1,
+    },
+  });
+
+  await prisma.lesson.create({
+    data: {
+      courseId: courseResume.id,
+      moduleId: moduleResume1.id,
+      title: "What is an ATS and How it Filters Resumes",
+      slug: "what-is-ats",
+      contentType: "video",
+      contentUrl: "https://www.youtube.com/watch?v=Tt08ipM5JzE",
+      durationSeconds: 240,
+      order: 1,
+    },
+  });
+
+  const resumeFinalQuiz = await prisma.quiz.create({
+    data: {
+      courseId: courseResume.id,
+      title: "Resume & LinkedIn Final Assessment",
+      isFinal: true,
+      timeLimitMinutes: 15,
+    },
+  });
+
+  await prisma.question.create({
+    data: {
+      quizId: resumeFinalQuiz.id,
+      text: "What does ATS stand for in hiring terminology?",
+      type: "single_choice",
+      optionsJson: JSON.stringify([
+        "Applicant Tracking System",
+        "Applied Tech Support",
+        "Assessment Tracking Software",
+        "Automated Talent Search"
+      ]),
+      correctAnswerJson: JSON.stringify("Applicant Tracking System"),
+      explanation: "ATS stands for Applicant Tracking System, which scans and sorts applications.",
+    },
+  });
+
+
   // Create Jobs associated with the courses
   const job1 = await prisma.job.create({
     data: {
