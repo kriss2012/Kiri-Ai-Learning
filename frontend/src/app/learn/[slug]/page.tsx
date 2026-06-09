@@ -5,6 +5,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, BookOpen, CheckCircle, PlayCircle, Award, Hourglass, HelpCircle } from "lucide-react";
 import confetti from "canvas-confetti";
+import { toast } from "react-hot-toast";
 import Navbar from "@/components/Navbar";
 import { fetchApi } from "@/lib/api";
 
@@ -211,6 +212,7 @@ export default function LearningWorkspace() {
       setQuizResult(null);
       setSelectedAnswers({});
       setTimerRemaining(data.timeLimitMinutes * 60);
+      toast.success("Quiz session started! Good luck.");
 
       // Start Countdown Timer
       if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
@@ -224,13 +226,13 @@ export default function LearningWorkspace() {
           return prev - 1;
         });
       }, 1000);
-    } catch (e) {
-      alert("Failed to start quiz session.");
+    } catch (e: any) {
+      toast.error(e.message || "Failed to start quiz session. Make sure any cooldown window is complete.");
     }
   };
 
   const handleAutoSubmit = () => {
-    alert("Time limit expired! Submitting answers automatically.");
+    toast.error("Time limit expired! Submitting answers automatically.");
     handleSubmitQuiz();
   };
 
@@ -252,6 +254,12 @@ export default function LearningWorkspace() {
 
       setQuizResult(data);
       
+      if (data.passed) {
+        toast.success(`You passed the assessment with ${data.scorePercent}%!`);
+      } else {
+        toast.error(`Assessment failed with ${data.scorePercent}%. Minimum required is ${data.minPassScore}%.`);
+      }
+
       // If passed final assessment, blow confetti!
       if (activeQuiz.isFinal && data.passed) {
         confetti({
@@ -264,7 +272,7 @@ export default function LearningWorkspace() {
       // Sync progress sidebar
       await loadWorkspaceData();
     } catch (e: any) {
-      alert(e.message || "Failed to submit answers.");
+      toast.error(e.message || "Failed to submit answers.");
     } finally {
       setQuizLoading(false);
     }
@@ -275,13 +283,14 @@ export default function LearningWorkspace() {
     setCompletingLesson(true);
     try {
       await fetchApi(`/lessons/${activeLesson.id}/complete`, { method: "POST" });
+      toast.success("Lesson completed successfully!");
       // Re-load sidebar
       const updatedData = await loadWorkspaceData();
       
       // Auto-advance to next lesson if available
       goToNextItem(updatedData.course);
     } catch (error: any) {
-      alert(error.message || "Failed to complete lesson. Make sure you watched the video.");
+      toast.error(error.message || "Failed to complete lesson. Make sure you watched the video.");
     } finally {
       setCompletingLesson(false);
     }
