@@ -6,6 +6,7 @@ import { lessonRouter } from "./lesson.routes";
 import { quizRouter } from "./quiz.routes";
 import { certRouter } from "./cert.routes";
 import { verifyRouter } from "./verify.routes";
+import { jobRouter } from "./job.routes";
 
 const apiRouter = Router();
 
@@ -19,6 +20,6 @@ apiRouter.use("/lessons", lessonRouter);
 apiRouter.use("/quizzes", quizRouter);
 apiRouter.use("/certificates", certRouter);
 apiRouter.use("/verify", verifyRouter);
-
+apiRouter.use("/jobs", jobRouter);
 
 export { apiRouter };
