@@ -126,6 +126,8 @@ export async function getCourseBySlug(req: AuthenticatedRequest, res: Response) 
           const passed = attempt.passed || false;
           const score = attempt.scorePercent || 0;
 
+          if (!existing || score > existing.scorePercent) {
+            completedQuizzes[attempt.quizId] = { passed, scorePercent: score };
           }
         });
         const totalLessonsCount = course.modules.reduce((acc, m) => acc + m.lessons.length, 0);
