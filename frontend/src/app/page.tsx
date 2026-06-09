@@ -75,42 +75,59 @@ function HomeContent() {
 
       {/* Hero Banner */}
       <section className="relative w-full px-6 py-20 md:py-32 flex flex-col items-center text-center overflow-hidden">
-        {/* Decorative background gradients */}
-        <div className="absolute top-[-20%] left-[-10%] w-[500px] h-[500px] rounded-full bg-amber-500/10 blur-[120px] pointer-events-none"></div>
-        <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] rounded-full bg-accent/20 blur-[120px] pointer-events-none"></div>
+        {/* Animated background orbs */}
+        <div className="absolute top-[-10%] left-[-5%] w-[600px] h-[600px] rounded-full bg-amber-500/8 blur-[140px] pointer-events-none animate-pulse" />
+        <div className="absolute bottom-[-10%] right-[-5%] w-[500px] h-[500px] rounded-full bg-emerald-500/6 blur-[140px] pointer-events-none" />
+        <div className="absolute top-[40%] left-[50%] -translate-x-1/2 w-[800px] h-[1px] bg-gradient-to-r from-transparent via-amber-500/20 to-transparent pointer-events-none" />
 
-        <div className="max-w-4xl mx-auto z-10">
-          <div className="inline-flex items-center space-x-2 rounded-full border border-amber-500/20 bg-amber-500/5 px-4 py-1.5 text-xs font-semibold text-amber-400 mb-6">
+        {/* Grid background */}
+        <div className="absolute inset-0 bg-grid opacity-40 pointer-events-none" />
+
+        <div className="max-w-4xl mx-auto z-10 space-y-6">
+          <div className="inline-flex items-center space-x-2 rounded-full border border-amber-500/25 bg-amber-500/8 px-4 py-1.5 text-xs font-semibold text-amber-400">
             <Star className="h-3.5 w-3.5 fill-current" />
-            <span>100% Free Credentials in India</span>
+            <span>100% Free Credentials · India&apos;s AI Learning Platform</span>
           </div>
 
-          <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight mb-6 leading-tight">
-            Master Generative AI & <br />
-            <span className="bg-gradient-to-r from-amber-400 to-yellow-500 bg-clip-text text-transparent">
-              Employability Skills
-            </span>
+          <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight leading-tight" style={{fontFamily: 'var(--font-outfit)'}}>
+            Master Generative AI &amp;<br />
+            <span className="gradient-text">Employability Skills</span>
           </h1>
 
-          <p className="text-lg md:text-xl text-slate-400 max-w-2xl mx-auto mb-10 leading-relaxed">
-            Boost your career with verified, employer-recognized credentials. Learn prompt engineering,
-            resume optimization, startup pitching, and AI workflows for free.
+          <p className="text-lg text-slate-400 max-w-2xl mx-auto leading-relaxed">
+            Earn employer-recognized certificates in AI, prompt engineering, and career skills.
+            Structured lessons, real assessments — completely free.
           </p>
 
-          <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4 justify-center">
+          <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3 justify-center">
             <Link
               href="#catalog"
-              className="rounded-lg bg-gradient-to-r from-amber-500 to-amber-600 px-6 py-3 font-bold text-slate-950 hover:brightness-110 hover:shadow-lg hover:shadow-amber-500/20 transition-all flex items-center justify-center space-x-2 cursor-pointer"
+              className="btn-primary flex items-center justify-center space-x-2"
             >
               <span>Explore Courses</span>
               <ArrowRight className="h-4 w-4" />
             </Link>
             <Link
               href="/verify/mock"
-              className="rounded-lg border border-slate-700 bg-slate-900/30 px-6 py-3 font-bold text-slate-300 hover:bg-slate-900 transition-all flex items-center justify-center space-x-2 cursor-pointer"
+              className="btn-ghost flex items-center justify-center space-x-2"
             >
               <span>Verify a Certificate</span>
             </Link>
+          </div>
+
+          {/* Stats row */}
+          <div className="flex flex-wrap items-center justify-center gap-8 pt-4">
+            {[
+              { value: "5+", label: "Courses" },
+              { value: "100%", label: "Free" },
+              { value: "QR", label: "Verified Certs" },
+              { value: "∞", label: "Retakes" },
+            ].map((stat) => (
+              <div key={stat.label} className="text-center">
+                <div className="text-2xl font-extrabold gradient-text" style={{fontFamily: 'var(--font-outfit)'}}>{stat.value}</div>
+                <div className="text-xs text-slate-500 mt-0.5">{stat.label}</div>
+              </div>
+            ))}
           </div>
         </div>
       </section>
@@ -197,56 +214,58 @@ function HomeContent() {
 
         {/* Loader skeleton */}
         {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {[1, 2, 3].map((n) => (
-              <div key={n} className="glass rounded-xl border border-slate-800 overflow-hidden h-[360px] relative shimmer"></div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[1, 2, 3, 4, 5, 6].map((n) => (
+              <div key={n} className="rounded-xl border border-white/5 overflow-hidden h-[340px] skeleton" />
             ))}
           </div>
         ) : filteredCourses.length === 0 ? (
-          <div className="text-center py-16 glass rounded-xl border border-slate-800">
-            <p className="text-slate-400 text-sm">No courses currently published in this category.</p>
+          <div className="text-center py-20 glass rounded-xl border border-white/5">
+            <BookOpen className="h-12 w-12 text-slate-600 mx-auto mb-4" />
+            <p className="text-slate-400 text-sm font-medium">No courses in this category yet.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredCourses.map((course) => (
               <Link
                 key={course.id}
                 href={`/courses/${course.slug}`}
-                className="glass rounded-xl border border-slate-800/80 overflow-hidden hover-card-trigger flex flex-col h-full cursor-pointer"
+                className="glass-card rounded-xl overflow-hidden flex flex-col h-full cursor-pointer group"
               >
                 {/* Thumbnail */}
-                <div className="relative h-48 w-full bg-slate-950 overflow-hidden">
+                <div className="relative h-44 w-full overflow-hidden bg-black">
                   <img
                     src={course.thumbnailUrl || "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe"}
                     alt={course.title}
-                    className="h-full w-full object-cover opacity-85 hover:scale-105 transition-transform duration-500"
+                    className="h-full w-full object-cover opacity-75 group-hover:opacity-90 group-hover:scale-105 transition-all duration-500"
                   />
-                  <div className="absolute top-3 left-3 rounded-full bg-slate-950/80 border border-slate-800 px-2.5 py-0.5 text-[10px] font-bold text-amber-500 uppercase">
-                    {course.level}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                  <div className="absolute top-3 left-3">
+                    <span className="badge badge-amber">{course.level}</span>
+                  </div>
+                  <div className="absolute bottom-3 right-3 text-[10px] text-white/70 font-semibold bg-black/50 px-2 py-0.5 rounded">
+                    {course.durationHours}h
                   </div>
                 </div>
 
                 {/* Content */}
-                <div className="p-6 flex flex-col flex-grow">
-                  <span className="text-[10px] font-bold tracking-wider text-amber-500 uppercase mb-2 block">
-                    {course.category === "generative_ai" ? "Generative AI" : "Employability Skills"}
+                <div className="p-5 flex flex-col flex-grow">
+                  <span className="text-[10px] font-bold tracking-wider text-amber-500 uppercase mb-1.5 block">
+                    {course.category === "generative_ai" ? "🤖 Generative AI" : "💼 Employability"}
                   </span>
-                  
-                  <h3 className="text-lg font-bold text-slate-100 line-clamp-1 mb-2">
+                  <h3 className="text-base font-bold text-slate-100 line-clamp-2 mb-2 leading-snug" style={{fontFamily: 'var(--font-outfit)'}}>
                     {course.title}
                   </h3>
-                  
-                  <p className="text-xs text-slate-400 line-clamp-3 mb-6 flex-grow">
+                  <p className="text-xs text-slate-500 line-clamp-2 mb-4 flex-grow">
                     {course.shortDescription}
                   </p>
-
-                  <div className="flex items-center justify-between border-t border-slate-800/50 pt-4 mt-auto">
-                    <span className="text-[11px] text-slate-500 font-medium">
-                      Duration: <strong className="text-slate-300 font-semibold">{course.durationHours} hrs</strong>
+                  <div className="flex items-center justify-between pt-3 border-t border-white/5">
+                    <span className="text-[11px] text-slate-500">
+                      by <span className="text-slate-400 font-medium">{course.instructor.displayName}</span>
                     </span>
-                    <span className="text-[11px] text-slate-500 font-medium hover:text-amber-400 flex items-center space-x-1">
-                      <span>Begin Lesson</span>
-                      <ArrowRight className="h-3.5 w-3.5" />
+                    <span className="text-[11px] font-semibold text-amber-500 flex items-center space-x-1 group-hover:gap-1 transition-all">
+                      <span>Start</span>
+                      <ArrowRight className="h-3 w-3" />
                     </span>
                   </div>
                 </div>
