@@ -250,7 +250,7 @@ A perfect prompt consists of these components:
       title: "Generative AI vs. Discriminative AI",
       slug: "generative-vs-discriminative",
       contentType: "video",
-      contentUrl: "https://www.youtube.com/watch?v=8L4mR2xVz9A",
+      contentUrl: "https://www.youtube.com/watch?v=G2ef2434-P4",
       durationSeconds: 180,
       order: 1,
     },
