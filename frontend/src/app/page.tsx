@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowRight, BookOpen, ShieldAlert, Award, Star, Compass } from "lucide-react";
 import Navbar from "@/components/Navbar";
@@ -25,11 +26,19 @@ interface Course {
   }>;
 }
 
-export default function Home() {
+function HomeContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const categoryParam = searchParams?.get("category") || "all";
+
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<string>("all");
+  const [activeTab, setActiveTab] = useState<string>(categoryParam);
+
+  useEffect(() => {
+    setActiveTab(categoryParam);
+  }, [categoryParam]);
 
   useEffect(() => {
     async function loadCourses() {
@@ -45,6 +54,15 @@ export default function Home() {
     }
     loadCourses();
   }, []);
+
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    if (tab === "all") {
+      router.push("/");
+    } else {
+      router.push(`/?category=${tab}`);
+    }
+  };
 
   const filteredCourses = courses.filter((c) => {
     if (activeTab === "all") return true;
@@ -143,7 +161,7 @@ export default function Home() {
           {/* Filter Tabs */}
           <div className="flex bg-slate-900/50 p-1.5 rounded-lg border border-slate-800 mt-6 md:mt-0 max-w-max">
             <button
-              onClick={() => setActiveTab("all")}
+              onClick={() => handleTabChange("all")}
               className={`px-4 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${
                 activeTab === "all" ? "bg-amber-500 text-slate-950" : "text-slate-400 hover:text-slate-200"
               }`}
@@ -151,7 +169,7 @@ export default function Home() {
               All Courses
             </button>
             <button
-              onClick={() => setActiveTab("generative_ai")}
+              onClick={() => handleTabChange("generative_ai")}
               className={`px-4 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${
                 activeTab === "generative_ai" ? "bg-amber-500 text-slate-950" : "text-slate-400 hover:text-slate-200"
               }`}
@@ -159,7 +177,7 @@ export default function Home() {
               Generative AI
             </button>
             <button
-              onClick={() => setActiveTab("employability")}
+              onClick={() => handleTabChange("employability")}
               className={`px-4 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer ${
                 activeTab === "employability" ? "bg-amber-500 text-slate-950" : "text-slate-400 hover:text-slate-200"
               }`}
@@ -261,5 +279,20 @@ export default function Home() {
         </div>
       </section>
     </div>
+  );
+}
+
+export default function Home() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-[#0B0F19] text-slate-100 flex flex-col">
+        <Navbar />
+        <div className="flex-grow flex items-center justify-center">
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-amber-500"></div>
+        </div>
+      </div>
+    }>
+      <HomeContent />
+    </Suspense>
   );
 }
