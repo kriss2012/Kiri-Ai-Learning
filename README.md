@@ -147,3 +147,26 @@ For offline staging, you can authenticate using the following credential buttons
 *   [Anti-Skip heartbeats controller](file:///d:/Kiri-Ai-Learning/backend/src/controllers/lesson.controller.ts)
 *   [RSA Digital Signer Service](file:///d:/Kiri-Ai-Learning/backend/src/services/crypto.service.ts)
 *   [Certificate Generation Service](file:///d:/Kiri-Ai-Learning/backend/src/services/certificate.service.ts)
+
+---
+
+## ☁️ Vercel One-Click Hosting Configuration
+
+The Kiri AI backend is fully configured for deployment as a Vercel Serverless Function.
+
+### Step-by-Step Vercel Deployment
+
+1.  **Import to GitHub**: Push your local `Kiri-Ai-Learning` repository to GitHub.
+2.  **Create Vercel Project**:
+    *   Log into [Vercel Dashboard](https://vercel.com).
+    *   Click **Add New** > **Project** and select your repository.
+3.  **Configure Directory Settings**:
+    *   Set **Root Directory** to `backend`.
+    *   Keep build settings default (Vercel will auto-detect dependencies and run `postinstall` to compile Prisma client).
+4.  **Set Environment Variables**:
+    Add the following environment variables in Vercel settings:
+    *   `DATABASE_URL`: `file:./dev.db` (Uses the bundled SQLite database with pre-seeded jobs, courses, and certificates).
+    *   `JWT_SECRET`: A secure random 32-character string.
+    *   `FIREBASE_PROJECT_ID`: `kiri-app-development` (or your active Firebase ID).
+5.  **Deploy**: Click the **Deploy** button. Vercel will build the serverless functions and serve the backend API globally.
+
