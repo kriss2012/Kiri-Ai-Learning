@@ -84,7 +84,7 @@ export async function firebaseLogin(req: Request, res: Response) {
           email: email,
           displayName: decodedToken.name || displayName || email.split("@")[0],
           profilePhoto: decodedToken.picture || null,
-          userType: decodedToken.email.includes("admin") ? "admin" : "student", // Simple auto-admin detection
+          userType: email.includes("admin") ? "admin" : "student", // Simple auto-admin detection
           college: college || null,
           city: city || null,
           emailVerified: true,
