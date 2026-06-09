@@ -124,7 +124,6 @@ export default function LearningWorkspace() {
         ytPlayheadRef.current = 0;
         // YouTube embeds do not use progress heartbeats; complete is manual on video completion/button click.
         return () => {};
-      }
       } else {
         setIsYouTube(false);
         setYtVideoId(null);
