@@ -45,6 +45,9 @@ app.use((err, req, res, next) => {
         message: process.env.NODE_ENV === "development" ? err.message : "An unexpected error occurred."
     });
 });
-app.listen(PORT, () => {
-    console.log(`🚀 Kiri AI Learning Backend running on http://localhost:${PORT}`);
-});
+if (!process.env.VERCEL) {
+    app.listen(PORT, () => {
+        console.log(`🚀 Kiri AI Learning Backend running on http://localhost:${PORT}`);
+    });
+}
+exports.default = app;
