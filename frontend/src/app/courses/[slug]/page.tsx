@@ -58,6 +58,7 @@ interface EnrollmentData {
   progressPercent: number;
   completedLessons: string[];
   completedQuizzes: Record<string, { passed: boolean; scorePercent: number }>;
+  certificateId: string | null;
 }
 
 export default function CourseDetail() {
@@ -237,6 +238,16 @@ export default function CourseDetail() {
                   <span>Go to Classroom</span>
                   <PlayCircle className="h-4 w-4" />
                 </Link>
+
+                {enrollment?.certificateId && (
+                  <Link
+                    href={`/verify/${enrollment.certificateId}`}
+                    className="w-full rounded-lg bg-emerald-600 hover:bg-emerald-500 py-3 text-center text-xs font-bold text-slate-100 hover:shadow-lg hover:shadow-emerald-500/15 transition-all flex items-center justify-center space-x-1 cursor-pointer animate-pulse"
+                  >
+                    <span>Download Certificate</span>
+                    <Award className="h-4 w-4" />
+                  </Link>
+                )}
               </div>
             ) : (
               <button
