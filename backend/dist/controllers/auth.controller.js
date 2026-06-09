@@ -63,7 +63,8 @@ async function firebaseLogin(req, res) {
     try {
         let decodedToken;
         // 1. Check for local dev mock tokens
-        if (idToken === "mock-student-token" || process.env.NODE_ENV !== "production" && idToken.startsWith("mock-")) {
+        const isMockAllowed = process.env.NODE_ENV !== "production" || process.env.ENABLE_MOCK_AUTH === "true";
+        if (idToken.startsWith("mock-") && isMockAllowed) {
             console.log(`🧪 Mock token detected: ${idToken}`);
             if (idToken === "mock-instructor-token") {
                 // Find seeded instructor
