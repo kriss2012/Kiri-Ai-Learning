@@ -3,9 +3,79 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.verifyCourseCompletion = verifyCourseCompletion;
 exports.checkAndCompleteCourse = checkAndCompleteCourse;
 const prisma_1 = __importDefault(require("../config/prisma"));
 const certificate_service_1 = require("./certificate.service");
+async function verifyCourseCompletion(userId, courseId) {
+    try {
+        const course = await prisma_1.default.course.findUnique({
+            where: { id: courseId },
+            include: {
+                lessons: true,
+            },
+        });
+        if (!course) {
+            return { passed: false, reason: "COURSE_NOT_FOUND" };
+        }
+        // Check 1: All lessons completed
+        const totalLessons = course.lessons.length;
+        const completedProgress = await prisma_1.default.lessonProgress.findMany({
+            where: {
+                userId,
+                courseId,
+                status: "completed",
+            },
+        });
+        if (completedProgress.length < totalLessons) {
+            return { passed: false, reason: "INCOMPLETE_LESSONS" };
+        }
+        // Check 2: All quizzes in the course must be passed (includes Final Assessment)
+        const courseQuizzes = await prisma_1.default.quiz.findMany({
+            where: { courseId },
+        });
+        for (const quiz of courseQuizzes) {
+            const passedAttempt = await prisma_1.default.quizAttempt.findFirst({
+                where: {
+                    userId,
+                    quizId: quiz.id,
+                    passed: true,
+                },
+            });
+            if (!passedAttempt) {
+                return { passed: false, reason: `QUIZ_NOT_PASSED: ${quiz.title}` };
+            }
+        }
+        // Check 3: User exists and email verified
+        const user = await prisma_1.default.user.findUnique({ where: { id: userId } });
+        if (!user) {
+            return { passed: false, reason: "USER_NOT_FOUND" };
+        }
+        const isMockUser = user.firebaseUid.includes("mock") || user.email.includes("mock") || user.email.includes("student@kiriapp.com");
+        if (!user.emailVerified && !isMockUser) {
+            return { passed: false, reason: "EMAIL_NOT_VERIFIED" };
+        }
+        // Check 4: Anti-fraud — minimum time (5% of course hours)
+        const enrollment = await prisma_1.default.enrollment.findUnique({
+            where: { userId_courseId: { userId, courseId } },
+        });
+        if (!enrollment) {
+            return { passed: false, reason: "NOT_ENROLLED" };
+        }
+        if (!isMockUser) {
+            const minSeconds = course.durationHours * 3600 * 0.05;
+            const totalWatchSeconds = completedProgress.reduce((sum, l) => sum + l.watchSeconds, 0);
+            if (totalWatchSeconds < minSeconds) {
+                return { passed: false, reason: "MINIMUM_TIME_NOT_MET" };
+            }
+        }
+        return { passed: true };
+    }
+    catch (error) {
+        console.error("verifyCourseCompletion Error:", error);
+        return { passed: false, reason: "SERVER_ERROR" };
+    }
+}
 async function checkAndCompleteCourse(userId, courseId, finalScore) {
     try {
         // 1. Check if completion already exists
@@ -26,79 +96,22 @@ async function checkAndCompleteCourse(userId, courseId, finalScore) {
                 certificateId: certificate?.certificateId || null,
             };
         }
-        // 2. Load all course details
+        // 2. Load course details
         const course = await prisma_1.default.course.findUnique({
             where: { id: courseId },
-            include: {
-                lessons: true,
-            },
         });
         if (!course) {
             throw new Error(`Course with ID ${courseId} not found.`);
         }
-        // 3. Enforce Genuineness: Check enrollment exists and verify minimum duration threshold
-        const enrollment = await prisma_1.default.enrollment.findUnique({
-            where: {
-                userId_courseId: { userId, courseId },
-            },
-        });
-        if (!enrollment) {
+        // 3. Verify completion criteria
+        const verification = await verifyCourseCompletion(userId, courseId);
+        if (!verification.passed) {
             return {
                 completed: false,
-                reason: "You are not enrolled in this course.",
+                reason: `Completion denied: ${verification.reason}`,
             };
         }
-        // Allow mock developer users to skip minimum duration validation
-        const user = await prisma_1.default.user.findUnique({ where: { id: userId } });
-        const isMockUser = user
-            ? (user.firebaseUid.includes("mock") || user.email.includes("mock") || user.email.includes("student@kiriapp.com"))
-            : false;
-        if (!isMockUser) {
-            const elapsedMs = Date.now() - new Date(enrollment.enrolledAt).getTime();
-            // Minimum duration required: 5% of durationHours (e.g. 12 minutes for a 4 hour course)
-            const minDurationMs = course.durationHours * 0.05 * 60 * 60 * 1000;
-            if (elapsedMs < minDurationMs) {
-                return {
-                    completed: false,
-                    reason: `Course completion flagged: Elapsed time since enrollment (${Math.round(elapsedMs / 60000)} mins) is too low for course length. Minimum requirement is ${Math.round(minDurationMs / 60000)} mins.`,
-                };
-            }
-        }
-        // 4. Count completed lessons for this user
-        const totalLessons = course.lessons.length;
-        const completedProgressCount = await prisma_1.default.lessonProgress.count({
-            where: {
-                userId,
-                courseId,
-                status: "completed",
-            },
-        });
-        if (completedProgressCount < totalLessons) {
-            return {
-                completed: false,
-                reason: `You have completed ${completedProgressCount} of ${totalLessons} lessons. Please watch all lectures first.`,
-            };
-        }
-        // 5. Enforce Genuineness: Check that all quizzes (module checkpoints and finals) in the course have been successfully passed
-        const courseQuizzes = await prisma_1.default.quiz.findMany({
-            where: { courseId },
-        });
-        for (const quiz of courseQuizzes) {
-            const passedAttempt = await prisma_1.default.quizAttempt.findFirst({
-                where: {
-                    userId,
-                    quizId: quiz.id,
-                    passed: true,
-                },
-            });
-            if (!passedAttempt) {
-                return {
-                    completed: false,
-                    reason: `Completion denied: You have not passed the quiz "${quiz.title}" yet. All checkpoints must be passed.`,
-                };
-            }
-        }
-        // 6. Record course completion
+        // 4. Record course completion
         const completion = await prisma_1.default.courseCompletion.create({
             data: {
                 userId,
@@ -107,7 +120,7 @@ async function checkAndCompleteCourse(userId, courseId, finalScore) {
             },
         });
         console.log(`🎓 Course completed by user ${userId} for course ${course.title}. Score: ${finalScore}%`);
-        // 7. Generate cryptographically signed certificate
+        // 5. Generate cryptographically signed certificate
         let certificate = null;
         let certError = null;
         try {
