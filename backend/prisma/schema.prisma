@@ -39,6 +39,7 @@ model User {
   courseCompletions  CourseCompletion[]
   certificates       Certificate[]       @relation("LearnerCertificates")
   revokedCertificate Certificate[]       @relation("RevokerCertificates")
+  jobApplications    JobApplication[]
 
   @@map("users")
 }
@@ -74,6 +75,7 @@ model Course {
   courseCompletions CourseCompletion[]
   certificates      Certificate[]
   sponsors          Sponsor[]          @relation("CourseSponsors")
+  jobs              Job[]
 
   @@map("courses")
 }
@@ -250,6 +252,7 @@ model Certificate {
   completion CourseCompletion     @relation(fields: [completionId], references: [id], onDelete: Cascade)
   revokedByUser User?             @relation("RevokerCertificates", fields: [revokedBy], references: [id], onDelete: SetNull)
   auditLogs  CertificateAuditLog[]
+  jobApplications JobApplication[]
 
   @@map("certificates")
 }
@@ -283,4 +286,39 @@ model Sponsor {
   courses Course[] @relation("CourseSponsors")
 
   @@map("sponsors")
+}
+
+model Job {
+  id               String   @id @default(uuid())
+  title            String
+  companyName      String
+  logoUrl          String?
+  requiredCourseId String
+  description      String
+  salaryRange      String?
+  location         String   @default("Remote")
+  createdAt        DateTime @default(now())
+
+  // Relations
+  requiredCourse   Course   @relation(fields: [requiredCourseId], references: [id], onDelete: Cascade)
+  applications     JobApplication[]
+
+  @@map("jobs")
+}
+
+model JobApplication {
+  id            String   @id @default(uuid())
+  jobId         String
+  userId        String
+  certificateId String
+  appliedAt     DateTime @default(now())
+  status        String   @default("applied") // applied, reviewing, matched
+
+  // Relations
+  job         Job         @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  certificate Certificate @relation(fields: [certificateId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, jobId])
+  @@map("job_applications")
 }
