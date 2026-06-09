@@ -122,24 +122,9 @@ export default function LearningWorkspace() {
         setIsYouTube(true);
         setYtVideoId(ytId);
         ytPlayheadRef.current = 0;
-
-        // Ticker increments playhead every second
-        const ticker = setInterval(() => {
-          ytPlayheadRef.current += 1;
-        }, 1000);
-
-        // Send heartbeat every 15 seconds
-        heartbeatIntervalRef.current = setInterval(() => {
-          fetchApi(`/lessons/${activeLesson.id}/heartbeat`, {
-            method: "POST",
-            body: JSON.stringify({ lastPositionSeconds: ytPlayheadRef.current }),
-          }).catch(() => {});
-        }, 15000);
-
-        return () => {
-          clearInterval(ticker);
-          if (heartbeatIntervalRef.current) clearInterval(heartbeatIntervalRef.current);
-        };
+        // YouTube embeds do not use progress heartbeats; complete is manual on video completion/button click.
+        return () => {};
+      }
       } else {
         setIsYouTube(false);
         setYtVideoId(null);
