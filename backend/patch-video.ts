@@ -2,11 +2,11 @@ import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
 async function main() {
-  const result = await prisma.lesson.updateMany({
-    where: { contentUrl: { contains: "8L4mR2xVz9A" } },
-    data: { contentUrl: "https://www.youtube.com/watch?v=G2ef2434-P4" },
+  const lessons = await prisma.lesson.findMany({
+    where: { contentType: "video" },
+    select: { id: true, title: true, contentUrl: true },
   });
-  console.log("Updated lessons:", result.count);
+  lessons.forEach(l => console.log(l.title, "->", l.contentUrl));
 }
 
 main()
