@@ -52,7 +52,7 @@ export async function checkAndCompleteCourse(userId: string, courseId: string, f
     // Allow mock developer users to skip minimum duration validation
     const isMockUser = userId.includes("mock-student") || userId.includes("mock-instructor");
     if (!isMockUser) {
-      const elapsedMs = Date.now() - new Date(enrollment.createdAt).getTime();
+      const elapsedMs = Date.now() - new Date(enrollment.enrolledAt).getTime();
       // Minimum duration required: 5% of durationHours (e.g. 12 minutes for a 4 hour course)
       const minDurationMs = course.durationHours * 0.05 * 60 * 60 * 1000;
       if (elapsedMs < minDurationMs) {
