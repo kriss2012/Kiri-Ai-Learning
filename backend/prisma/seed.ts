@@ -11,6 +11,8 @@ async function main() {
   await prisma.courseCompletion.deleteMany();
   await prisma.quizAttempt.deleteMany();
   await prisma.lessonProgress.deleteMany();
+  await prisma.jobApplication.deleteMany();
+  await prisma.job.deleteMany();
   await prisma.enrollment.deleteMany();
   await prisma.question.deleteMany();
   await prisma.quiz.deleteMany();
@@ -86,7 +88,7 @@ async function main() {
       title: "Introduction to Large Language Models",
       slug: "intro-to-llms",
       contentType: "video",
-      contentUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4",
+      contentUrl: "https://www.youtube.com/watch?v=zjkBMFhNj_g",
       durationSeconds: 300,
       order: 1,
     },
@@ -164,7 +166,7 @@ A perfect prompt consists of these components:
       title: "Few-Shot vs Zero-Shot Prompting",
       slug: "few-shot-vs-zero-shot",
       contentType: "video",
-      contentUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4",
+      contentUrl: "https://www.youtube.com/watch?v=jC4v5AS4YSg",
       durationSeconds: 450,
       order: 1,
     },
@@ -248,7 +250,7 @@ A perfect prompt consists of these components:
       title: "What is an ATS and How it Filters Resumes",
       slug: "what-is-ats",
       contentType: "video",
-      contentUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
+      contentUrl: "https://www.youtube.com/watch?v=Tt08ipM5JzE",
       durationSeconds: 240,
       order: 1,
     },
@@ -278,6 +280,32 @@ A perfect prompt consists of these components:
       explanation: "ATS stands for Applicant Tracking System, which scans and sorts applications.",
     },
   });
+
+  // Create Jobs associated with the courses
+  const job1 = await prisma.job.create({
+    data: {
+      title: "Generative AI Prompt Engineer Intern",
+      companyName: "TechCorp India",
+      logoUrl: "https://cdn.kiriapp.com/sponsors/techcorp.png",
+      requiredCourseId: coursePrompt.id,
+      salaryRange: "INR 25,000 - 35,000 / month",
+      location: "Remote / Pune",
+      description: "Design, evaluate, and refine prompt architectures to drive LLM integrations in our core enterprise products. Requires a verified Prompt Engineering Masterclass certificate from Kiri AI Learning.",
+    },
+  });
+  console.log(`💼 Job created: ${job1.title}`);
+
+  const job2 = await prisma.job.create({
+    data: {
+      title: "Associate Career Consultant",
+      companyName: "Startup Hub",
+      requiredCourseId: courseResume.id,
+      salaryRange: "INR 30,000 - 45,000 / month",
+      location: "Remote",
+      description: "Provide expert guidance on career preparation, review applicant resumes, and help students optimize their LinkedIn profiles. Requires a verified Resume & LinkedIn Mastery certificate.",
+    },
+  });
+  console.log(`💼 Job created: ${job2.title}`);
 
   console.log("🌱 Seeding completed successfully!");
 }
