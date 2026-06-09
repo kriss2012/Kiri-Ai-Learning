@@ -56,64 +56,90 @@ export async function heartbeat(req: AuthenticatedRequest, res: Response) {
     return res.status(400).json({ error: "Bad Request", message: "Invalid lastPositionSeconds." });
   }
 
-  try {
-    const lesson = await prisma.lesson.findUnique({
-      where: { id: lessonId },
-    });
-
-    if (!lesson) {
-      return res.status(404).json({ error: "Not Found", message: "Lesson not found." });
-    }
-
-    const updatedProgress = await prisma.$transaction(async (tx) => {
-      const progress = await tx.lessonProgress.findUnique({
-        where: {
-          userId_lessonId: { userId, lessonId },
-        },
+  let retries = 3;
+  while (retries > 0) {
+    try {
+      const lesson = await prisma.lesson.findUnique({
+        where: { id: lessonId },
       });
 
-      if (!progress) {
-        throw new Error("NOT_FOUND");
+      if (!lesson) {
+        return res.status(404).json({ error: "Not Found", message: "Lesson not found." });
       }
 
-      if (progress.status === "completed") {
-        return progress;
-      }
-
-      // Anti-Fraud check: Calculate how much wall-clock time elapsed since last DB update
-      const now = Date.now();
-      const lastUpdateMs = new Date(progress.updatedAt).getTime();
-      const elapsedWallClockSec = Math.max(0, (now - lastUpdateMs) / 1000);
-
-      // Calculate how much the user playhead advanced
-      const diffPosition = Math.max(0, lastPositionSeconds - progress.lastPositionSeconds);
-
-      let watchSecIncrement = diffPosition;
-      
-      // If playhead jumped significantly faster than wall-clock time, cap it to wall-clock time
-      if (diffPosition > elapsedWallClockSec * 1.25 + 5) {
-        // User jumped/skipped forward. We only reward them with the actual time they spent watching (or zero if they just seeked)
-        watchSecIncrement = Math.min(diffPosition, elapsedWallClockSec);
-      }
-
-      return await tx.lessonProgress.update({
-        where: { id: progress.id },
-        data: {
-          lastPositionSeconds,
-          watchSeconds: {
-            increment: Math.max(0, Math.round(watchSecIncrement)),
+      const updatedProgress = await prisma.$transaction(async (tx) => {
+        const progress = await tx.lessonProgress.findUnique({
+          where: {
+            userId_lessonId: { userId, lessonId },
           },
-        },
-      });
-    });
+        });
 
-    return res.status(200).json({ progress: updatedProgress });
-  } catch (error: any) {
-    if (error.message === "NOT_FOUND") {
-      return res.status(404).json({ error: "Not Found", message: "Lesson progress has not been started." });
+        if (!progress) {
+          throw new Error("NOT_FOUND");
+        }
+
+        if (progress.status === "completed") {
+          return progress;
+        }
+
+        // Anti-Fraud check: Calculate how much wall-clock time elapsed since last DB update
+        const now = Date.now();
+        const lastUpdateMs = new Date(progress.updatedAt).getTime();
+        const elapsedWallClockSec = Math.max(0, (now - lastUpdateMs) / 1000);
+
+        // Calculate how much the user playhead advanced
+        const diffPosition = Math.max(0, lastPositionSeconds - progress.lastPositionSeconds);
+
+        let watchSecIncrement = diffPosition;
+        
+        // If playhead jumped significantly faster than wall-clock time, cap it to wall-clock time
+        if (diffPosition > elapsedWallClockSec * 1.25 + 5) {
+          // User jumped/skipped forward. We only reward them with the actual time they spent watching (or zero if they just seeked)
+          watchSecIncrement = Math.min(diffPosition, elapsedWallClockSec);
+        }
+
+        // Optimistic concurrency control via matching updatedAt in updateMany
+        const updateResult = await tx.lessonProgress.updateMany({
+          where: {
+            id: progress.id,
+            updatedAt: progress.updatedAt,
+          },
+          data: {
+            lastPositionSeconds,
+            watchSeconds: {
+              increment: Math.max(0, Math.round(watchSecIncrement)),
+            },
+          },
+        });
+
+        if (updateResult.count === 0) {
+          throw new Error("CONCURRENCY_ERROR");
+        }
+
+        return {
+          ...progress,
+          lastPositionSeconds,
+          watchSeconds: progress.watchSeconds + Math.max(0, Math.round(watchSecIncrement)),
+          updatedAt: new Date(now),
+        };
+      });
+
+      return res.status(200).json({ progress: updatedProgress });
+    } catch (error: any) {
+      if (error.message === "NOT_FOUND") {
+        return res.status(404).json({ error: "Not Found", message: "Lesson progress has not been started." });
+      }
+      if (error.message === "CONCURRENCY_ERROR") {
+        retries--;
+        if (retries === 0) {
+          return res.status(409).json({ error: "Conflict", message: "Concurrent updates detected." });
+        }
+        await new Promise((resolve) => setTimeout(resolve, Math.random() * 50 + 10));
+        continue;
+      }
+      console.error("Heartbeat Error:", error);
+      return res.status(500).json({ error: "Server Error", message: "Failed to log progress heartbeat." });
     }
-    console.error("Heartbeat Error:", error);
-    return res.status(500).json({ error: "Server Error", message: "Failed to log progress heartbeat." });
   }
 }
 
@@ -165,9 +191,10 @@ export async function completeLesson(req: AuthenticatedRequest, res: Response) {
       const isMockUser = user
         ? (user.firebaseUid.includes("mock") || user.email.includes("mock") || user.email.includes("student@kiriapp.com"))
         : false;
+      const isYouTube = lesson.contentUrl ? (lesson.contentUrl.includes("youtube.com") || lesson.contentUrl.includes("youtu.be")) : false;
 
-      // Enforce watch time (at least 80%)
-      if (!isMockUser && progress.watchSeconds < requiredWatchTime) {
+      // Enforce watch time (at least 80%) for self-hosted videos only
+      if (!isMockUser && !isYouTube && progress.watchSeconds < requiredWatchTime) {
         return res.status(400).json({
           error: "Verification Failed",
           message: `You must watch at least 80% of this video to complete it. Watched: ${progress.watchSeconds}s, Required: ${Math.round(requiredWatchTime)}s.`,
