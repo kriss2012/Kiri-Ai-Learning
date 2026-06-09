@@ -1,5 +1,7 @@
 import express, { Request, Response, NextFunction } from "express";
 import cors from "cors";
+import path from "path";
+
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -14,6 +16,7 @@ app.use(cors({
   allowedHeaders: ["Content-Type", "Authorization", "X-Kiri-App-Version"],
 }));
 app.use(express.json());
+app.use(express.static(path.join(__dirname, "../public")));
 
 // Actuator Healthcheck (for cron-job uptime checks)
 app.get("/actuator/health", (req: Request, res: Response) => {
