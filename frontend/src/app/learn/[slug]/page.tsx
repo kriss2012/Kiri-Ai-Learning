@@ -375,6 +375,19 @@ export default function LearningWorkspace() {
               <span>Back to Overview</span>
             </Link>
             <h2 className="text-sm font-extrabold text-slate-200 mt-3 line-clamp-1">{course?.title}</h2>
+
+            {enrollment?.certificateId && (
+              <div className="mt-4 p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-center space-y-2">
+                <p className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider">🎓 Course Completed!</p>
+                <Link
+                  href={`/verify/${enrollment.certificateId}`}
+                  className="w-full inline-flex items-center justify-center space-x-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 py-2 text-[10px] font-extrabold text-slate-100 transition-all cursor-pointer shadow-lg shadow-emerald-600/20"
+                >
+                  <Award className="h-3.5 w-3.5" />
+                  <span>Claim Certificate</span>
+                </Link>
+              </div>
+            )}
             
             {/* Progress bar in sidebar */}
             <div className="mt-4 space-y-1.5">
