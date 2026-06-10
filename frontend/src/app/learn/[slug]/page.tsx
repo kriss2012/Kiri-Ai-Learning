@@ -240,12 +240,24 @@ export default function LearningWorkspace() {
       
       if (data.passed) {
         toast.success(`You passed the assessment with ${data.scorePercent}%!`);
+        if (activeQuiz.isFinal) {
+          if (data.completion?.completed) {
+            toast.success("🎉 Course completed! Your certificate has been issued.");
+          } else {
+            const reason = data.completion?.reason || "";
+            if (reason.includes("INCOMPLETE_LESSONS")) {
+              toast.error("Complete all course lessons to receive your certificate.");
+            } else {
+              toast.error(`Certificate pending: ${reason.replace("Completion denied: ", "")}`);
+            }
+          }
+        }
       } else {
         toast.error(`Assessment failed with ${data.scorePercent}%. Minimum required is ${data.minPassScore}%.`);
       }
 
-      // If passed final assessment, blow confetti!
-      if (activeQuiz.isFinal && data.passed) {
+      // If passed final assessment and course completed, blow confetti!
+      if (activeQuiz.isFinal && data.passed && data.completion?.completed) {
         confetti({
           particleCount: 150,
           spread: 80,
@@ -266,8 +278,19 @@ export default function LearningWorkspace() {
     if (!activeLesson) return;
     setCompletingLesson(true);
     try {
-      await fetchApi(`/lessons/${activeLesson.id}/complete`, { method: "POST" });
+      const data = await fetchApi(`/lessons/${activeLesson.id}/complete`, { method: "POST" });
       toast.success("Lesson completed successfully!");
+      
+      // If this completes the entire course, trigger the confetti celebration!
+      if (data?.completion?.completed) {
+        confetti({
+          particleCount: 150,
+          spread: 80,
+          origin: { y: 0.6 },
+        });
+        toast.success("🎉 Congratulations! You have completed the course!");
+      }
+
       // Re-load sidebar
       const updatedData = await loadWorkspaceData();
       
