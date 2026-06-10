@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { BookOpen, Award, CheckCircle, Clock, GraduationCap, Download, ExternalLink, ShieldCheck, User as UserIcon, Briefcase, MessageSquare, Lock, Unlock, HelpCircle, Check, AlertCircle } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import { fetchApi, getUser, User } from "@/lib/api";
+import { toast } from "react-hot-toast";
 
 interface Certificate {
   id: string;
@@ -18,6 +19,10 @@ interface Certificate {
     title: string;
     thumbnailUrl: string;
   };
+  auditLogs?: Array<{
+    event: string;
+    createdAt: string;
+  }>;
 }
 
 interface ActiveEnrollment {
@@ -176,8 +181,9 @@ export default function Dashboard() {
       document.body.appendChild(link);
       link.click();
       link.parentNode?.removeChild(link);
+      toast.success("Certificate downloaded successfully.");
     } catch (e) {
-      alert("Error downloading certificate PDF.");
+      toast.error("Error downloading certificate PDF.");
     } finally {
       setDownloadingId(null);
     }
@@ -190,9 +196,9 @@ export default function Dashboard() {
         method: "POST"
       });
       setAppliedJobIds(prev => [...prev, jobId]);
-      alert(`Success! Applied with Certificate: ${res.certificateId}`);
+      toast.success(`Success! Applied with Certificate: ${res.certificateId}`);
     } catch (err: any) {
-      alert(err.message || "Failed to submit application.");
+      toast.error(err.message || "Failed to submit application.");
     } finally {
       setApplyingJobId(null);
     }
@@ -200,7 +206,7 @@ export default function Dashboard() {
 
   const handleNextQuestion = () => {
     if (!currentAnswer.trim()) {
-      alert("Please write a response before submitting.");
+      toast.error("Please write a response before submitting.");
       return;
     }
     const newAnswers = [...userAnswers, currentAnswer];
@@ -421,6 +427,61 @@ export default function Dashboard() {
                           <div className="bg-slate-950/40 p-2.5 rounded-lg border border-slate-900/60 text-[9px] text-slate-400 space-y-1">
                             <p>ID: <strong className="text-slate-300 font-semibold">{cert.certificateId}</strong></p>
                             <p>Grade: <strong className="text-slate-300 font-semibold">{cert.scoreSnapshot}%</strong></p>
+                          </div>
+
+                          {/* Live Verification & Download Stats */}
+                          <div className="flex justify-between items-center bg-slate-900/20 p-2.5 rounded-lg border border-slate-900/40 text-[10px] text-slate-400">
+                            <span className="flex items-center space-x-1">
+                              <ShieldCheck className="h-3.5 w-3.5 text-emerald-500" />
+                              <span>Scanned: <strong>{cert.auditLogs?.filter(l => l.event === "qr_scanned").length || 0}</strong></span>
+                            </span>
+                            <span className="flex items-center space-x-1">
+                              <Download className="h-3.5 w-3.5 text-blue-400" />
+                              <span>Downloads: <strong>{cert.auditLogs?.filter(l => l.event === "downloaded").length || 0}</strong></span>
+                            </span>
+                          </div>
+
+                          {/* Collaboration / Share over other apps */}
+                          <div className="flex flex-col space-y-1.5 pt-1">
+                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Share credentials</p>
+                            <div className="flex items-center space-x-2">
+                              <button
+                                onClick={() => {
+                                  navigator.clipboard.writeText(`http://localhost:3000/verify/${cert.certificateId}`);
+                                  toast.success("Verification link copied to clipboard!");
+                                }}
+                                className="flex-grow rounded border border-slate-800 bg-slate-900/40 hover:bg-slate-800 text-[10px] font-semibold text-slate-300 py-1.5 transition-all cursor-pointer text-center"
+                              >
+                                Copy Link
+                              </button>
+                              <a
+                                href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(`http://localhost:3000/verify/${cert.certificateId}`)}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="rounded border border-slate-800 bg-[#0A66C2]/10 hover:bg-[#0A66C2]/20 text-[#0A66C2] px-2 py-1.5 transition-all text-[10px] font-bold flex items-center justify-center"
+                                title="Share on LinkedIn"
+                              >
+                                LinkedIn
+                              </a>
+                              <a
+                                href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(`Check out my verified Kiri AI certificate for ${cert.courseTitleSnapshot}! `)}&url=${encodeURIComponent(`http://localhost:3000/verify/${cert.certificateId}`)}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="rounded border border-slate-800 bg-white/5 hover:bg-white/10 text-white px-2 py-1.5 transition-all text-[10px] font-bold flex items-center justify-center"
+                                title="Share on Twitter / X"
+                              >
+                                X
+                              </a>
+                              <a
+                                href={`https://api.whatsapp.com/send?text=${encodeURIComponent(`Check out my verified Kiri AI certificate for ${cert.courseTitleSnapshot}! http://localhost:3000/verify/${cert.certificateId}`)}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="rounded border border-slate-800 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 px-2 py-1.5 transition-all text-[10px] font-bold flex items-center justify-center"
+                                title="Share on WhatsApp"
+                              >
+                                WA
+                              </a>
+                            </div>
                           </div>
 
                           {/* Actions */}
