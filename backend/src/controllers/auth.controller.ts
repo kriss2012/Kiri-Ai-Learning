@@ -48,6 +48,14 @@ export async function firebaseLogin(req: Request, res: Response) {
           name: instructor.displayName,
           picture: instructor.profilePhoto || undefined,
         };
+      } else if (idToken.startsWith("mock-student-token-")) {
+        const emailPart = idToken.replace("mock-student-token-", "");
+        decodedToken = {
+          uid: `mock-student-uid-${emailPart}`,
+          email: emailPart,
+          name: displayName || emailPart.split("@")[0],
+          picture: `https://api.dicebear.com/7.x/adventurer/svg?seed=${emailPart}`,
+        };
       } else {
         // Create or find mock student
         decodedToken = {
@@ -85,7 +93,7 @@ export async function firebaseLogin(req: Request, res: Response) {
           email: email,
           displayName: decodedToken.name || displayName || email.split("@")[0],
           profilePhoto: decodedToken.picture || null,
-          userType: email.includes("admin") ? "admin" : "student", // Simple auto-admin detection
+          userType: req.body.userType || (email.includes("admin") ? "admin" : "student"),
           college: college || null,
           city: city || null,
           emailVerified: true,
@@ -97,8 +105,11 @@ export async function firebaseLogin(req: Request, res: Response) {
       user = await prisma.user.update({
         where: { id: user.id },
         data: {
-          displayName: decodedToken.name || user.displayName,
+          displayName: decodedToken.name || displayName || user.displayName,
           profilePhoto: decodedToken.picture || user.profilePhoto,
+          college: college !== undefined ? college : user.college,
+          city: city !== undefined ? city : user.city,
+          userType: req.body.userType || user.userType,
         },
       });
     }
