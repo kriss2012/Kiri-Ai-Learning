@@ -22,6 +22,12 @@ export async function getMyCertificates(req: AuthenticatedRequest, res: Response
             thumbnailUrl: true,
           },
         },
+        auditLogs: {
+          select: {
+            event: true,
+            createdAt: true,
+          },
+        },
       },
       orderBy: { issuedAt: "desc" },
     });
