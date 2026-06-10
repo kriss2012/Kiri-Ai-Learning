@@ -51,17 +51,41 @@ export async function fetchApi(endpoint: string, options: RequestInit = {}) {
 /**
  * Triggers developer mock logins
  */
-export async function mockLogin(role: "student" | "instructor") {
-  const token = role === "student" ? "mock-student-token" : "mock-instructor-token";
-  
-  const data = await fetchApi("/auth/firebase-login", {
-    method: "POST",
-    body: JSON.stringify({
+export async function mockLogin(
+  role: "student" | "instructor" | "founder",
+  customDetails?: {
+    displayName: string;
+    email: string;
+    college: string;
+    city: string;
+  }
+) {
+  let token = "";
+  let body: any = {};
+
+  if (customDetails) {
+    token = `mock-student-token-${customDetails.email}`;
+    body = {
+      idToken: token,
+      displayName: customDetails.displayName,
+      college: customDetails.college,
+      city: customDetails.city,
+      userType: role === "instructor" ? "educator" : role === "founder" ? "founder" : "student",
+    };
+  } else {
+    token = role === "student" ? "mock-student-token" : "mock-instructor-token";
+    body = {
       idToken: token,
       displayName: role === "student" ? "Priya Sharma" : "Dr. Ramesh Kumar",
       college: role === "student" ? "Pune Institute of Computer Technology" : "PICT Pune",
       city: role === "student" ? "Pune" : "Pune",
-    }),
+      userType: role === "instructor" ? "educator" : "student",
+    };
+  }
+  
+  const data = await fetchApi("/auth/firebase-login", {
+    method: "POST",
+    body: JSON.stringify(body),
   });
 
   if (data.token && data.user) {
