@@ -6,6 +6,7 @@ import { ArrowLeft, BookOpen, Clock, CheckCircle, PlayCircle, Lock, GraduationCa
 import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import { fetchApi, getUser, mockLogin } from "@/lib/api";
+import { toast } from "react-hot-toast";
 
 interface Lesson {
   id: string;
@@ -103,7 +104,7 @@ export default function CourseDetail() {
         window.location.reload();
         return;
       } catch (e) {
-        alert("Mock login failed");
+        toast.error("Mock login failed");
         return;
       }
     }
@@ -117,8 +118,9 @@ export default function CourseDetail() {
       const data = await fetchApi(`/courses/${slug}`);
       setCourse(data.course);
       setEnrollment(data.enrollment);
+      toast.success("Successfully enrolled in course!");
     } catch (error: any) {
-      alert(error.message || "Failed to enroll.");
+      toast.error(error.message || "Failed to enroll.");
     } finally {
       setSubmitting(false);
     }
