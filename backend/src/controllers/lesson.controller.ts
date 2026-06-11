@@ -20,22 +20,34 @@ export async function startLesson(req: AuthenticatedRequest, res: Response) {
       return res.status(404).json({ error: "Not Found", message: "Lesson not found." });
     }
 
-    const progress = await prisma.lessonProgress.upsert({
+    const existingProgress = await prisma.lessonProgress.findUnique({
       where: {
         userId_lessonId: { userId, lessonId },
       },
-      update: {
-        status: "in_progress",
-      },
-      create: {
-        userId,
-        lessonId,
-        courseId: lesson.courseId,
-        status: "in_progress",
-        watchSeconds: 0,
-        lastPositionSeconds: 0,
-      },
     });
+
+    let progress;
+    if (existingProgress) {
+      if (existingProgress.status === "completed") {
+        progress = existingProgress;
+      } else {
+        progress = await prisma.lessonProgress.update({
+          where: { id: existingProgress.id },
+          data: { status: "in_progress" },
+        });
+      }
+    } else {
+      progress = await prisma.lessonProgress.create({
+        data: {
+          userId,
+          lessonId,
+          courseId: lesson.courseId,
+          status: "in_progress",
+          watchSeconds: 0,
+          lastPositionSeconds: 0,
+        },
+      });
+    }
 
     return res.status(200).json({ progress });
   } catch (error) {
