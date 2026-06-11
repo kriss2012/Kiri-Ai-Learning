@@ -50,6 +50,11 @@ export default function LearningWorkspace() {
   async function loadWorkspaceData() {
     try {
       const data = await fetchApi(`/courses/${slug}`);
+      if (!data.enrollment?.isEnrolled) {
+        toast.error("Please enroll to access the classroom.");
+        router.push(`/courses/${slug}`);
+        return;
+      }
       setCourse(data.course);
       setEnrollment(data.enrollment);
       return data;
